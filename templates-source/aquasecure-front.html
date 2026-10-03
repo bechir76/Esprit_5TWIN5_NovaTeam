@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AquaSecure Citoyens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout : barre de navigation fixe, écrans empilés (un seul visible), grille 12 colonnes max 1200px */
+:root{
+  --navy:#0B3C5D; --water:#1CA7EC; --teal:#2EC4B6; --warn:#F4A261; --crit:#E63946;
+  --bg:#F5F9FC; --surface:#FFFFFF; --surface-2:#EAF2F8; --line:#D5E3EE;
+  --fg:#10283A; --muted:#5B7488; --on-navy:#FFFFFF; --hero:#0B3C5D;
+  --ok-soft:#DDF6F3; --warn-soft:#FDEEDF; --crit-soft:#FCE3E5; --water-soft:#DDF1FC;
+  --f-display:"Manrope",system-ui,sans-serif; --f-body:"IBM Plex Sans",system-ui,sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,monospace;
+  --r:10px; --shadow:0 1px 2px rgba(11,60,93,.06),0 6px 18px rgba(11,60,93,.06);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0A1822; --surface:#0F2230; --surface-2:#14303F; --line:#1F3C4F; --fg:#E4EEF5; --muted:#8FA9BC; --hero:#0B2B42;
+  --ok-soft:#113A38; --warn-soft:#3A2A1A; --crit-soft:#3B1A1E; --water-soft:#0F3348; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0A1822; --surface:#0F2230; --surface-2:#14303F; --line:#1F3C4F; --fg:#E4EEF5; --muted:#8FA9BC; --hero:#0B2B42;
+  --ok-soft:#113A38; --warn-soft:#3A2A1A; --crit-soft:#3B1A1E; --water-soft:#0F3348; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.55}
+h1,h2,h3,h4{font-family:var(--f-display);line-height:1.15;margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:clamp(2rem,4.6vw,3.3rem);font-weight:800}
+h2{font-size:clamp(1.5rem,2.6vw,2rem);font-weight:800}
+h3{font-size:1.1rem;font-weight:700}
+p{margin:0}
+a{color:inherit}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.eyebrow{font-family:var(--f-mono);font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--water)}
+.wrap{max-width:1200px;margin:0 auto;padding-inline:20px}
+.stack{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.grid{display:grid;gap:20px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.g4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+section.screen{padding-block:40px 64px}
+.screen-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:28px}
+.screen-head p{max-width:60ch}
+
+/* ===== Header (partial: layouts/front/header.blade.php) ===== */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.topbar .wrap{display:flex;align-items:center;gap:20px;height:66px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-weight:800;font-size:1.15rem;text-decoration:none;color:var(--fg)}
+.brand svg{flex:none}
+.nav{display:flex;gap:4px;margin-left:auto}
+.nav a{padding:8px 12px;border-radius:8px;text-decoration:none;color:var(--muted);font-weight:500}
+.nav a:hover{color:var(--fg);background:var(--surface-2)}
+.nav a.active{color:var(--navy);background:var(--water-soft)}
+:root[data-theme="dark"] .nav a.active{color:var(--water)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .nav a.active{color:var(--water)}}
+.user-menu{position:relative}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--teal);color:#06302C;display:grid;place-items:center;font-weight:700;font-size:.85rem;border:0;cursor:pointer}
+.dropdown{position:absolute;right:0;top:46px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);min-width:200px;padding:6px}
+.dropdown a{display:block;padding:9px 12px;border-radius:6px;text-decoration:none}
+.dropdown a:hover{background:var(--surface-2)}
+.dropdown hr{border:0;border-top:1px solid var(--line);margin:6px 0}
+.burger{display:none;margin-left:auto;background:none;border:1px solid var(--line);border-radius:8px;padding:8px 10px;color:var(--fg)}
+@media (max-width:900px){
+  .nav{display:none;position:absolute;left:0;right:0;top:66px;flex-direction:column;background:var(--surface);border-bottom:1px solid var(--line);padding:10px 20px}
+  .nav.open{display:flex}
+  .burger{display:block}
+}
+
+/* ===== Buttons, badges, forms ===== */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:9px;font-weight:600;font-family:var(--f-body);font-size:.95rem;border:1px solid transparent;cursor:pointer;text-decoration:none;line-height:1}
+.btn-primary{background:var(--water);color:#032A3F}
+.btn-primary:hover{filter:brightness(1.07)}
+.btn-navy{background:var(--navy);color:var(--on-navy)}
+.btn-ghost{background:transparent;border-color:var(--line);color:var(--fg)}
+.btn-ghost:hover{background:var(--surface-2)}
+.btn-light{background:#fff;color:var(--navy)}
+.btn-outline-light{border-color:rgba(255,255,255,.4);color:#fff;background:transparent}
+.btn-sm{padding:7px 12px;font-size:.85rem}
+.btn:focus-visible,.input:focus-visible,a:focus-visible,button:focus-visible{outline:3px solid var(--water);outline-offset:2px}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:.75rem;font-weight:600;padding:4px 10px;border-radius:999px;white-space:nowrap}
+.badge::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.b-ok{background:var(--ok-soft);color:#13877D}
+.b-warn{background:var(--warn-soft);color:#B5631F}
+.b-crit{background:var(--crit-soft);color:#C22834}
+.b-info{background:var(--water-soft);color:#0E7DB3}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-weight:600;font-size:.88rem}
+.field .hint{font-size:.8rem;color:var(--muted)}
+.input,select.input,textarea.input{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--fg);font:inherit}
+textarea.input{min-height:120px;resize:vertical}
+.is-invalid .input{border-color:var(--crit);background:var(--crit-soft)}
+.is-invalid .error{display:flex}
+.error{display:none;gap:6px;align-items:center;color:var(--crit);font-size:.8rem;font-weight:500}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.pad{padding:22px}
+.progress{height:8px;background:var(--surface-2);border-radius:99px;overflow:hidden}
+.progress span{display:block;height:100%;background:linear-gradient(90deg,var(--water),var(--teal));border-radius:99px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.seg input{position:absolute;opacity:0}
+.seg label{border:1px solid var(--line);border-radius:9px;padding:12px;text-align:center;cursor:pointer;font-weight:600;font-size:.88rem;background:var(--surface)}
+.seg input:checked+label{border-color:var(--water);background:var(--water-soft)}
+.seg input:focus-visible+label{outline:3px solid var(--water)}
+
+/* ===== Home ===== */
+.hero{background:var(--hero);color:#fff;position:relative;overflow:hidden}
+.hero .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;padding-block:64px 72px;align-items:center}
+.hero p.lead{color:#C7DDEB;font-size:1.1rem;max-width:52ch;margin-block:18px 26px}
+.hero canvas{position:absolute;inset:0;width:100%;height:100%;opacity:.35;pointer-events:none}
+.hero .wrap>*{position:relative}
+.gauge-card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:22px;backdrop-filter:blur(4px)}
+.gauge-card .k{display:flex;justify-content:space-between;padding-block:10px;border-bottom:1px dashed rgba(255,255,255,.15);font-size:.92rem}
+.gauge-card .k:last-child{border-bottom:0}
+.gauge-card .v{font-family:var(--f-mono);color:#7FD8FF}
+@media (max-width:900px){.hero .wrap{grid-template-columns:1fr}}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-top:-36px;position:relative;z-index:2}
+.stats div{background:var(--surface);padding:22px}
+.stats strong{display:block;font-family:var(--f-display);font-size:2rem;font-weight:800}
+.steps{counter-reset:s}
+.step{display:flex;gap:16px}
+.step::before{counter-increment:s;content:counter(s);flex:none;width:38px;height:38px;border-radius:50%;border:2px solid var(--water);color:var(--water);display:grid;place-items:center;font-family:var(--f-mono);font-weight:500}
+.inc-item{display:flex;gap:14px;align-items:flex-start;padding:16px 0;border-bottom:1px solid var(--line)}
+.inc-item:last-child{border-bottom:0}
+.inc-ic{flex:none;width:40px;height:40px;border-radius:10px;display:grid;place-items:center}
+.proj-card{overflow:hidden;display:flex;flex-direction:column}
+.proj-img{aspect-ratio:16/9;max-width:100%;position:relative}
+.proj-img .badge{position:absolute;top:12px;left:12px}
+.proj-body{padding:18px;display:flex;flex-direction:column;gap:12px;flex:1}
+.money{display:flex;justify-content:space-between;font-size:.85rem}
+
+/* ===== Map ===== */
+.map-layout{display:grid;grid-template-columns:280px 1fr;gap:20px}
+@media (max-width:900px){.map-layout{grid-template-columns:1fr}}
+.map-box{position:relative;border-radius:var(--r);overflow:hidden;border:1px solid var(--line);background:var(--surface-2);min-height:520px}
+.map-box svg{width:100%;height:100%;display:block}
+.marker{cursor:pointer}
+.marker:hover circle:first-child{r:16}
+.map-legend{position:absolute;left:14px;bottom:14px;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:10px 14px;font-size:.8rem;display:flex;gap:14px;flex-wrap:wrap}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.map-pop{position:absolute;right:14px;top:14px;width:290px;max-width:calc(100% - 28px)}
+.check{display:flex;gap:10px;align-items:center;padding:6px 0;font-size:.92rem}
+.check input{accent-color:var(--water);width:16px;height:16px}
+
+/* ===== Report form ===== */
+.report-layout{display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start}
+@media (max-width:980px){.report-layout{grid-template-columns:1fr}}
+.form-sec{padding:24px;display:flex;flex-direction:column;gap:18px}
+.form-sec+.form-sec{border-top:1px solid var(--line)}
+.sec-title{display:flex;gap:10px;align-items:center}
+.sec-title span{font-family:var(--f-mono);font-size:.75rem;color:var(--muted)}
+.drop{border:2px dashed var(--line);border-radius:var(--r);padding:26px;text-align:center;color:var(--muted)}
+.thumbs{display:flex;gap:10px}
+.thumb{width:76px;height:76px;border-radius:8px;background:linear-gradient(135deg,#5A8CA8,#2C5F7C);position:relative}
+.ai-panel{background:linear-gradient(160deg,var(--navy),#12507A);color:#fff;border-radius:var(--r);padding:22px;position:sticky;top:90px}
+.ai-panel .sugg{background:rgba(255,255,255,.08);border-radius:9px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px}
+.ai-panel .conf{font-family:var(--f-mono);font-size:.8rem;color:#7FD8FF}
+.mini-map{height:160px;border-radius:9px;background:var(--surface-2);border:1px solid var(--line);position:relative;overflow:hidden}
+
+/* ===== Lists ===== */
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.toolbar .input{width:auto;flex:1;min-width:200px}
+.toolbar select.input{flex:0 0 auto}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table{width:100%;border-collapse:collapse;font-size:.92rem;min-width:720px}
+th{text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;padding:12px 16px;background:var(--surface-2)}
+td{padding:14px 16px;border-top:1px solid var(--line);vertical-align:middle}
+.pager{display:flex;gap:6px;justify-content:flex-end;margin-top:16px}
+.pager a{padding:7px 12px;border:1px solid var(--line);border-radius:7px;text-decoration:none;font-size:.85rem}
+.pager a.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:20px;overflow-x:auto}
+.tabs a{padding:10px 14px;text-decoration:none;color:var(--muted);font-weight:600;border-bottom:2px solid transparent;white-space:nowrap}
+.tabs a.on{color:var(--fg);border-color:var(--water)}
+
+/* ===== Project detail ===== */
+.detail-layout{display:grid;grid-template-columns:1fr 360px;gap:24px;align-items:start}
+@media (max-width:980px){.detail-layout{grid-template-columns:1fr}}
+.timeline{position:relative;padding-left:24px}
+.timeline::before{content:"";position:absolute;left:7px;top:6px;bottom:6px;width:2px;background:var(--line)}
+.tl{position:relative;padding-bottom:20px}
+.tl::before{content:"";position:absolute;left:-22px;top:5px;width:12px;height:12px;border-radius:50%;background:var(--surface);border:2px solid var(--line)}
+.tl.done::before{background:var(--teal);border-color:var(--teal)}
+.tl.now::before{background:var(--water);border-color:var(--water);box-shadow:0 0 0 4px var(--water-soft)}
+.budget-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:.92rem}
+
+/* ===== Auth ===== */
+.auth{display:grid;grid-template-columns:1fr 1fr;min-height:640px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
+.auth-side{background:var(--hero);color:#fff;padding:44px;display:flex;flex-direction:column;justify-content:space-between;gap:30px;position:relative;overflow:hidden}
+.auth-form{padding:44px;display:flex;flex-direction:column;gap:18px;justify-content:center;max-width:460px;width:100%;margin:0 auto}
+@media (max-width:860px){.auth{grid-template-columns:1fr}.auth-side{display:none}.auth-form{padding:28px 20px}}
+.divider{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.8rem}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
+.auth-switch{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+
+/* ===== Profile ===== */
+.profile-layout{display:grid;grid-template-columns:260px 1fr;gap:24px;align-items:start}
+@media (max-width:900px){.profile-layout{grid-template-columns:1fr}}
+.side-menu a{display:flex;gap:10px;padding:11px 14px;border-radius:8px;text-decoration:none;color:var(--muted);font-weight:500}
+.side-menu a.on{background:var(--water-soft);color:var(--fg)}
+.big-avatar{width:84px;height:84px;border-radius:50%;background:var(--teal);color:#06302C;display:grid;place-items:center;font-family:var(--f-display);font-size:1.8rem;font-weight:800}
+.toggle{position:relative;width:44px;height:24px;flex:none}
+.toggle input{opacity:0;width:0;height:0}
+.toggle span{position:absolute;inset:0;background:var(--line);border-radius:99px;transition:.2s;cursor:pointer}
+.toggle span::before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.toggle input:checked+span{background:var(--teal)}
+.toggle input:checked+span::before{transform:translateX(20px)}
+.pref{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid var(--line)}
+
+/* ===== Footer ===== */
+footer{background:var(--navy);color:#B8D2E3;padding-block:48px 28px}
+footer .cols{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:28px}
+footer h4{color:#fff;font-size:.95rem;margin-bottom:12px}
+footer a{display:block;text-decoration:none;padding-block:4px;font-size:.92rem}
+footer a:hover{color:#fff}
+footer .legal{border-top:1px solid rgba(255,255,255,.12);margin-top:32px;padding-top:18px;font-size:.82rem;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+@media (max-width:760px){footer .cols{grid-template-columns:1fr 1fr}}
+
+/* ===== Chatbot ===== */
+.chat-fab{position:fixed;right:22px;bottom:calc(22px + env(safe-area-inset-bottom,0px));z-index:30;display:flex;align-items:center;gap:10px;background:var(--navy);color:#fff;border:0;border-radius:999px;padding:12px 18px 12px 12px;box-shadow:0 8px 24px rgba(11,60,93,.35);cursor:pointer;font-weight:600;font-family:var(--f-body)}
+.chat-fab .ic{width:34px;height:34px;border-radius:50%;background:var(--water);display:grid;place-items:center}
+.chat-win{position:fixed;right:22px;bottom:calc(86px + env(safe-area-inset-bottom,0px));z-index:30;width:360px;max-width:calc(100vw - 32px);background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 50px rgba(11,60,93,.25);overflow:hidden;display:flex;flex-direction:column}
+.chat-head{background:var(--navy);color:#fff;padding:14px 16px;display:flex;justify-content:space-between;align-items:center}
+.chat-body{padding:16px;display:flex;flex-direction:column;gap:10px;max-height:320px;overflow:auto;font-size:.9rem}
+.msg{padding:10px 13px;border-radius:12px;max-width:85%}
+.msg.bot{background:var(--surface-2);align-self:flex-start;border-bottom-left-radius:4px}
+.msg.me{background:var(--water);color:#032A3F;align-self:flex-end;border-bottom-right-radius:4px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips button{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:99px;padding:6px 10px;font-size:.78rem;cursor:pointer}
+.chat-input{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--navy);color:#fff;padding:12px 18px;border-radius:10px;z-index:40;box-shadow:var(--shadow);display:flex;gap:10px;align-items:center}
+.screen-switch{background:var(--surface-2);border-bottom:1px solid var(--line);font-size:.8rem}
+.screen-switch .wrap{display:flex;gap:6px;overflow-x:auto;padding-block:8px}
+.screen-switch a{white-space:nowrap;padding:5px 10px;border-radius:6px;text-decoration:none;color:var(--muted);font-family:var(--f-mono)}
+.screen-switch a.on{background:var(--surface);color:var(--fg);border:1px solid var(--line)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<!-- Barre de prévisualisation des écrans (à retirer lors de l'intégration Blade) -->
+<div class="screen-switch"><div class="wrap" id="switcher"></div></div>
+
+<!-- ============ HEADER : resources/views/layouts/front/partials/header.blade.php ============ -->
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="#accueil" aria-label="AquaSecure, accueil">
+      <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3C16 3 6 14.5 6 20.5a10 10 0 0 0 20 0C26 14.5 16 3 16 3Z" fill="#1CA7EC"/><path d="M11 21.5c1.8 1.6 3.4 1.6 5 0s3.2-1.6 5 0" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+      AquaSecure
+    </a>
+    <button class="burger" id="burger" aria-label="Ouvrir le menu">☰</button>
+    <nav class="nav" id="nav">
+      <a href="#accueil" data-nav="accueil">Accueil</a>
+      <a href="#carte" data-nav="carte">Carte du réseau</a>
+      <a href="#signaler" data-nav="signaler">Signaler un incident</a>
+      <a href="#incidents" data-nav="incidents">Incidents</a>
+      <a href="#projets" data-nav="projets">Projets</a>
+    </nav>
+    <!-- @guest -->
+    <a class="btn btn-ghost btn-sm" href="#connexion" id="guestBtn" hidden>Connexion</a>
+    <!-- @else -->
+    <div class="user-menu">
+      <button class="avatar" id="avatarBtn" aria-haspopup="true" aria-expanded="false">SB</button>
+      <div class="dropdown" id="userDrop" hidden>
+        <div style="padding:10px 12px"><strong>Sana Ben Ali</strong><div class="muted" style="font-size:.82rem">Citoyenne · Ariana</div></div>
+        <hr>
+        <a href="#profil">Mon profil</a>
+        <a href="#profil">Mes signalements</a>
+        <a href="#profil">Mes contributions</a>
+        <hr>
+        <a href="#connexion">Se déconnecter</a>
+      </div>
+    </div>
+    <!-- @endguest -->
+  </div>
+</header>
+
+<main>
+<!-- ================= ACCUEIL : resources/views/front/home.blade.php ================= -->
+<section data-page="accueil">
+  <div class="hero">
+    <canvas id="ripple" aria-hidden="true"></canvas>
+    <div class="wrap">
+      <div>
+        <span class="eyebrow" style="color:#7FD8FF">Réseau d'eau potable · Grand Tunis</span>
+        <h1 style="margin-top:14px">Une eau sûre se surveille ensemble.</h1>
+        <p class="lead">Signalez une fuite, une eau trouble ou une coupure en deux minutes. Suivez l'état des réservoirs et des canalisations de votre quartier, et financez les travaux qui comptent.</p>
+        <div class="row">
+          <a class="btn btn-primary" href="#signaler">Signaler un incident</a>
+          <a class="btn btn-outline-light" href="#carte">Voir la carte du réseau</a>
+        </div>
+      </div>
+      <div class="gauge-card" aria-label="Qualité de l'eau mesurée aujourd'hui">
+        <div class="row" style="justify-content:space-between;margin-bottom:6px">
+          <strong>Qualité mesurée aujourd'hui</strong><span class="badge b-ok" style="background:rgba(46,196,182,.18);color:#7BE8DC">Conforme</span>
+        </div>
+        <div class="muted" style="color:#9CBCD1;font-size:.82rem;margin-bottom:8px">Station de traitement Ghdir El Golla · relevé 08:30</div>
+        <div class="k"><span>Chlore résiduel</span><span class="v">0,42 mg/L</span></div>
+        <div class="k"><span>Turbidité</span><span class="v">0,6 NTU</span></div>
+        <div class="k"><span>pH</span><span class="v">7,4</span></div>
+        <div class="k"><span>Pression moyenne du réseau</span><span class="v">3,1 bar</span></div>
+        <div class="k"><span>Niveau des barrages</span><span class="v" style="color:#F4C18F">31 %</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="stats">
+      <div><strong class="mono">1 284</strong><span class="muted">incidents résolus en 2026</span></div>
+      <div><strong class="mono">36</strong><span class="muted">projets de rénovation financés</span></div>
+      <div><strong class="mono">512</strong><span class="muted">infrastructures surveillées</span></div>
+      <div><strong class="mono">18 h</strong><span class="muted">délai moyen d'intervention</span></div>
+    </div>
+
+    <div class="grid g2" style="margin-top:64px;align-items:start">
+      <div class="stack" style="gap:20px">
+        <span class="eyebrow">Comment ça marche</span>
+        <h2>Du signalement à la réparation</h2>
+        <div class="stack steps" style="gap:22px;margin-top:8px">
+          <div class="step"><div><h3>Vous signalez</h3><p class="muted">Photo, position et description. L'assistant IA propose la catégorie et la gravité.</p></div></div>
+          <div class="step"><div><h3>La régie qualifie et intervient</h3><p class="muted">Le signalement est vérifié, rattaché à l'infrastructure concernée et confié à une équipe terrain.</p></div></div>
+          <div class="step"><div><h3>Vous suivez jusqu'à la résolution</h3><p class="muted">Chaque changement de statut vous est notifié, jusqu'à la clôture.</p></div></div>
+        </div>
+      </div>
+      <div class="card pad">
+        <div class="row" style="justify-content:space-between;margin-bottom:6px"><h3>Derniers signalements</h3><a href="#incidents" class="muted" style="font-size:.88rem">Tout voir</a></div>
+        <div id="homeIncidents"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:64px">
+      <div class="screen-head"><div class="stack" style="gap:8px"><span class="eyebrow">Financement participatif</span><h2>Projets en cours de financement</h2></div><a class="btn btn-ghost" href="#projets">Tous les projets</a></div>
+      <div class="grid g3" id="homeProjects"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CARTE : resources/views/front/infrastructures/map.blade.php ================= -->
+<section class="screen" data-page="carte" hidden>
+  <div class="wrap">
+    <div class="screen-head"><div class="stack" style="gap:8px"><span class="eyebrow">Infrastructures</span><h2>Carte du réseau d'eau potable</h2><p class="muted">État des réservoirs, stations et conduites, mis à jour après chaque inspection.</p></div></div>
+    <div class="map-layout">
+      <aside class="card pad stack" style="gap:18px">
+        <div class="field"><label for="mapSearch">Rechercher</label><input class="input" id="mapSearch" placeholder="Quartier, rue, ouvrage…"></div>
+        <div><strong style="font-size:.88rem">Type d'infrastructure</strong>
+          <label class="check"><input type="checkbox" checked> Réservoirs</label>
+          <label class="check"><input type="checkbox" checked> Stations de pompage</label>
+          <label class="check"><input type="checkbox" checked> Stations de traitement</label>
+          <label class="check"><input type="checkbox" checked> Conduites principales</label>
+        </div>
+        <div><strong style="font-size:.88rem">État</strong>
+          <label class="check"><input type="checkbox" checked><span class="dot" style="background:var(--teal)"></span>Bon</label>
+          <label class="check"><input type="checkbox" checked><span class="dot" style="background:var(--warn)"></span>À surveiller</label>
+          <label class="check"><input type="checkbox" checked><span class="dot" style="background:var(--crit)"></span>Critique</label>
+        </div>
+        <div class="field"><label for="mapZone">Zone</label><select class="input" id="mapZone"><option>Toutes les zones</option><option>Tunis Centre</option><option>Ariana</option><option>Ben Arous</option><option>La Manouba</option></select></div>
+        <button class="btn btn-navy" type="button">Appliquer les filtres</button>
+      </aside>
+      <div class="map-box">
+        <svg id="mapSvg" viewBox="0 0 900 560" role="img" aria-label="Carte schématique du réseau"></svg>
+        <div class="map-legend"><span><span class="dot" style="background:var(--teal)"></span>Bon</span><span><span class="dot" style="background:var(--warn)"></span>À surveiller</span><span><span class="dot" style="background:var(--crit)"></span>Critique</span></div>
+        <div class="card pad map-pop stack" id="mapPop" style="gap:10px"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SIGNALER : resources/views/front/incidents/create.blade.php ================= -->
+<section class="screen" data-page="signaler" hidden>
+  <div class="wrap">
+    <div class="screen-head"><div class="stack" style="gap:8px"><span class="eyebrow">Nouveau signalement</span><h2>Signaler un incident</h2><p class="muted">Les champs marqués d'un astérisque sont obligatoires. Une urgence sanitaire ? Appelez aussi le numéro vert de votre régie.</p></div></div>
+    <div class="report-layout">
+      <form class="card" id="reportForm" novalidate>
+        <div class="form-sec">
+          <div class="sec-title"><span>1/4</span><h3>Nature de l'incident</h3></div>
+          <div class="field"><label>Type d'incident *</label>
+            <div class="seg" role="radiogroup">
+              <input type="radio" name="type" id="t1" value="fuite" checked><label for="t1">💧 Fuite</label>
+              <input type="radio" name="type" id="t2" value="contamination"><label for="t2">⚠️ Contamination</label>
+              <input type="radio" name="type" id="t3" value="coupure"><label for="t3">🚱 Coupure</label>
+            </div>
+          </div>
+          <div class="field"><label for="sev">Niveau de gravité *</label>
+            <select class="input" id="sev"><option>Faible : suintement, gêne mineure</option><option selected>Moyen : écoulement visible, pression réduite</option><option>Élevé : rue inondée, eau colorée ou odorante</option><option>Critique : risque sanitaire ou quartier entier privé d'eau</option></select>
+          </div>
+          <div class="field is-invalid" id="fTitle"><label for="title">Titre *</label><input class="input" id="title" placeholder="Ex. : Fuite importante devant l'école Ibn Khaldoun">
+            <span class="error">Le titre est obligatoire (10 caractères minimum).</span></div>
+          <div class="field" id="fDesc"><label for="desc">Description *</label><textarea class="input" id="desc">Depuis ce matin, de l'eau jaillit du trottoir au niveau du regard. La pression au robinet a nettement baissé dans tout l'immeuble.</textarea><span class="hint">Décrivez ce que vous voyez : couleur, odeur, débit, depuis quand.</span><span class="error">La description doit contenir au moins 30 caractères.</span></div>
+        </div>
+        <div class="form-sec">
+          <div class="sec-title"><span>2/4</span><h3>Localisation</h3></div>
+          <div class="grid g2" style="gap:14px">
+            <div class="field"><label for="addr">Adresse *</label><input class="input" id="addr" value="Avenue Habib Bourguiba, Ariana"></div>
+            <div class="field"><label for="zone">Délégation *</label><select class="input" id="zone"><option>Ariana Ville</option><option>La Soukra</option><option>Raoued</option></select></div>
+          </div>
+          <div class="mini-map" aria-label="Position du signalement">
+            <svg viewBox="0 0 600 160" width="100%" height="100%" preserveAspectRatio="xMidYMid slice"><rect width="600" height="160" fill="var(--surface-2)"/><path d="M0 60 L600 90 M0 130 L600 110 M180 0 L220 160 M420 0 L390 160" stroke="var(--line)" stroke-width="10"/><path d="M0 60 L600 90" stroke="var(--water)" stroke-width="2" stroke-dasharray="6 6" opacity=".6"/><circle cx="300" cy="75" r="22" fill="var(--water)" opacity=".2"/><circle cx="300" cy="75" r="8" fill="var(--water)" stroke="#fff" stroke-width="3"/></svg>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" style="align-self:flex-start">📍 Utiliser ma position</button>
+        </div>
+        <div class="form-sec">
+          <div class="sec-title"><span>3/4</span><h3>Photos</h3></div>
+          <label class="drop" for="photos"><strong>Glissez vos photos ici</strong> ou cliquez pour parcourir<br><span style="font-size:.8rem">JPG ou PNG, 5 Mo maximum par photo, 4 photos au plus</span></label>
+          <input type="file" id="photos" accept="image/*" multiple hidden>
+          <div class="thumbs"><div class="thumb"></div><div class="thumb" style="background:linear-gradient(135deg,#7AA6BE,#3B6E8B)"></div></div>
+        </div>
+        <div class="form-sec">
+          <div class="sec-title"><span>4/4</span><h3>Vos coordonnées</h3></div>
+          <div class="grid g2" style="gap:14px">
+            <div class="field"><label for="name">Nom complet *</label><input class="input" id="name" value="Sana Ben Ali"></div>
+            <div class="field is-invalid"><label for="phone">Téléphone</label><input class="input" id="phone" value="22 45 1"><span class="error">Le numéro doit comporter 8 chiffres.</span></div>
+          </div>
+          <label class="check"><input type="checkbox" checked> Me notifier à chaque changement de statut</label>
+          <div class="row" style="justify-content:flex-end"><button type="button" class="btn btn-ghost">Enregistrer le brouillon</button><button class="btn btn-primary" type="submit">Envoyer le signalement</button></div>
+        </div>
+      </form>
+      <aside class="ai-panel" aria-live="polite">
+        <div class="row" style="gap:10px"><span style="width:34px;height:34px;border-radius:9px;background:var(--water);display:grid;place-items:center">✦</span><div><strong>Assistant IA</strong><div style="font-size:.8rem;color:#9CBCD1">Analyse de la description et des photos</div></div></div>
+        <div class="sugg"><div><div style="font-size:.78rem;color:#9CBCD1">Catégorie suggérée</div><strong>Fuite sur conduite</strong></div><span class="conf">94 %</span></div>
+        <div class="sugg"><div><div style="font-size:.78rem;color:#9CBCD1">Gravité estimée</div><strong>Élevée</strong></div><span class="conf">81 %</span></div>
+        <div class="sugg"><div><div style="font-size:.78rem;color:#9CBCD1">Ouvrage probable</div><strong>Conduite DN 300 · Ariana Nord</strong></div><span class="conf">76 %</span></div>
+        <p style="font-size:.85rem;color:#C7DDEB;margin-top:14px">2 signalements similaires à moins de 200 m ces dernières 24 h. Le vôtre sera regroupé pour accélérer l'intervention.</p>
+        <button class="btn btn-light btn-sm" type="button" style="margin-top:14px;width:100%;justify-content:center">Appliquer les suggestions</button>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- ================= INCIDENTS : resources/views/front/incidents/index.blade.php ================= -->
+<section class="screen" data-page="incidents" hidden>
+  <div class="wrap">
+    <div class="screen-head"><div class="stack" style="gap:8px"><span class="eyebrow">Suivi public</span><h2>Incidents signalés</h2></div><a class="btn btn-primary" href="#signaler">Signaler un incident</a></div>
+    <div class="tabs"><a href="#incidents" class="on">Tous <span class="mono muted">(248)</span></a><a href="#incidents">Signalés</a><a href="#incidents">En cours</a><a href="#incidents">Résolus</a></div>
+    <div class="toolbar">
+      <input class="input" placeholder="Rechercher un incident, une rue…" aria-label="Rechercher">
+      <select class="input" aria-label="Type"><option>Tous les types</option><option>Fuite</option><option>Contamination</option><option>Coupure</option></select>
+      <select class="input" aria-label="Zone"><option>Toutes les zones</option><option>Tunis</option><option>Ariana</option><option>Ben Arous</option></select>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>Référence</th><th>Incident</th><th>Type</th><th>Zone</th><th>Gravité</th><th>Statut</th><th>Signalé le</th></tr></thead><tbody id="incTable"></tbody></table></div>
+    <div class="pager"><a href="#incidents">‹</a><a class="on" href="#incidents">1</a><a href="#incidents">2</a><a href="#incidents">3</a><a href="#incidents">›</a></div>
+  </div>
+</section>
+
+<!-- ================= PROJETS : resources/views/front/projects/index.blade.php ================= -->
+<section class="screen" data-page="projets" hidden>
+  <div class="wrap">
+    <div class="screen-head"><div class="stack" style="gap:8px"><span class="eyebrow">Rénovation et décontamination</span><h2>Projets à financer</h2><p class="muted">Chaque dinar collecté est affecté au projet choisi. Les dépenses sont publiées à chaque étape des travaux.</p></div>
+      <select class="input" style="width:auto" aria-label="Trier"><option>Plus urgents d'abord</option><option>Presque financés</option><option>Plus récents</option></select></div>
+    <div class="grid g3" id="allProjects"></div>
+  </div>
+</section>
+
+<!-- ================= DÉTAIL PROJET : resources/views/front/projects/show.blade.php ================= -->
+<section class="screen" data-page="projet" hidden>
+  <div class="wrap">
+    <a href="#projets" class="muted" style="font-size:.9rem;text-decoration:none">← Retour aux projets</a>
+    <div class="screen-head" style="margin-top:14px"><div class="stack" style="gap:10px"><span class="badge b-warn">Décontamination</span><h2>Réhabilitation du réservoir de La Soukra</h2><p class="muted">Réservoir semi-enterré de 5 000 m³ construit en 1987. Fissures du radier et dépôts de manganèse détectés lors de l'inspection de mars 2026.</p></div></div>
+    <div class="detail-layout">
+      <div class="stack" style="gap:24px">
+        <div class="proj-img card" style="background:linear-gradient(135deg,#0E5A85,#2EC4B6);border:0;min-height:260px"></div>
+        <div class="card pad">
+          <h3 style="margin-bottom:12px">Budget détaillé</h3>
+          <div class="budget-row"><span>Vidange, nettoyage et désinfection</span><span class="mono">38 000 TND</span></div>
+          <div class="budget-row"><span>Réparation du radier et étanchéité</span><span class="mono">112 000 TND</span></div>
+          <div class="budget-row"><span>Remplacement des vannes d'isolement</span><span class="mono">46 000 TND</span></div>
+          <div class="budget-row"><span>Capteurs de qualité connectés (chlore, turbidité)</span><span class="mono">24 000 TND</span></div>
+          <div class="budget-row" style="border:0;font-weight:700"><span>Total</span><span class="mono">220 000 TND</span></div>
+        </div>
+        <div class="card pad">
+          <h3 style="margin-bottom:16px">Avancement des travaux</h3>
+          <div class="timeline">
+            <div class="tl done"><strong>Inspection et diagnostic</strong><div class="muted" style="font-size:.88rem">12 mars 2026 · rapport publié</div></div>
+            <div class="tl done"><strong>Validation du financement municipal</strong><div class="muted" style="font-size:.88rem">2 mai 2026 · 120 000 TND engagés</div></div>
+            <div class="tl now"><strong>Collecte citoyenne en cours</strong><div class="muted" style="font-size:.88rem">Clôture le 30 novembre 2026</div></div>
+            <div class="tl"><strong>Travaux de réhabilitation</strong><div class="muted" style="font-size:.88rem">Prévu janvier à avril 2027</div></div>
+            <div class="tl" style="padding-bottom:0"><strong>Remise en service et contrôle qualité</strong><div class="muted" style="font-size:.88rem">Prévu mai 2027</div></div>
+          </div>
+        </div>
+      </div>
+      <aside class="stack" style="gap:20px;position:sticky;top:90px">
+        <div class="card pad stack" style="gap:14px">
+          <div><strong class="mono" style="font-size:1.8rem;font-family:var(--f-display)">168 400 TND</strong><div class="muted">collectés sur 220 000 TND</div></div>
+          <div class="progress"><span style="width:77%"></span></div>
+          <div class="row" style="justify-content:space-between;font-size:.88rem"><span><strong>77 %</strong> financé</span><span><strong>58</strong> jours restants</span></div>
+          <div class="field"><label for="amount">Montant de votre contribution</label>
+            <div class="seg"><input type="radio" name="amt" id="a1"><label for="a1">20 TND</label><input type="radio" name="amt" id="a2" checked><label for="a2">50 TND</label><input type="radio" name="amt" id="a3"><label for="a3">100 TND</label></div>
+            <input class="input" id="amount" placeholder="Autre montant (TND)"></div>
+          <button class="btn btn-primary" style="justify-content:center" type="button" data-toast="Merci, votre contribution de 50 TND est enregistrée.">Contribuer au projet</button>
+          <p class="muted" style="font-size:.8rem">Démo : aucun paiement n'est effectué.</p>
+        </div>
+        <div class="card pad">
+          <h3 style="margin-bottom:10px">Derniers financements</h3>
+          <div class="budget-row"><span>Municipalité de La Soukra</span><span class="mono">120 000</span></div>
+          <div class="budget-row"><span>Association Eau Vive</span><span class="mono">15 000</span></div>
+          <div class="budget-row"><span>Contributions citoyennes (412)</span><span class="mono">33 400</span></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- ================= AUTH : resources/views/auth/*.blade.php ================= -->
+<section class="screen" data-page="connexion" hidden>
+  <div class="wrap">
+    <div class="auth-switch"><a class="btn btn-sm btn-navy" href="#connexion">Connexion</a><a class="btn btn-sm btn-ghost" href="#inscription">Inscription</a><a class="btn btn-sm btn-ghost" href="#oubli">Mot de passe oublié</a><a class="btn btn-sm btn-ghost" href="#reset">Nouveau mot de passe</a></div>
+    <div class="auth">
+      <div class="auth-side">
+        <a class="brand" style="color:#fff" href="#accueil"><svg width="30" height="30" viewBox="0 0 32 32"><path d="M16 3C16 3 6 14.5 6 20.5a10 10 0 0 0 20 0C26 14.5 16 3 16 3Z" fill="#1CA7EC"/></svg>AquaSecure</a>
+        <div><h2 style="color:#fff">Bon retour parmi nous.</h2><p style="color:#C7DDEB;margin-top:12px;max-width:40ch">Retrouvez vos signalements, leur statut et les projets que vous soutenez.</p></div>
+        <div class="gauge-card" style="font-size:.9rem"><strong>3 incidents</strong> signalés près de chez vous cette semaine, dont 2 déjà résolus.</div>
+      </div>
+      <form class="auth-form" novalidate>
+        <div><h2>Connexion</h2><p class="muted" style="margin-top:6px">Accédez à votre espace citoyen.</p></div>
+        <div class="field"><label for="le">Adresse e-mail</label><input class="input" id="le" type="email" value="sana.benali@mail.tn"></div>
+        <div class="field is-invalid"><div class="row" style="justify-content:space-between"><label for="lp">Mot de passe</label><a href="#oubli" style="font-size:.82rem;color:var(--water)">Mot de passe oublié ?</a></div><input class="input" id="lp" type="password" value="12345"><span class="error">Ces identifiants ne correspondent à aucun compte.</span></div>
+        <label class="check"><input type="checkbox"> Se souvenir de moi</label>
+        <button class="btn btn-primary" style="justify-content:center" type="button">Se connecter</button>
+        <p class="muted" style="text-align:center;font-size:.9rem">Pas encore de compte ? <a href="#inscription" style="color:var(--water)">Créer un compte</a></p>
+      </form>
+    </div>
+  </div>
+</section>
+
+<section class="screen" data-page="inscription" hidden>
+  <div class="wrap">
+    <div class="auth-switch"><a class="btn btn-sm btn-ghost" href="#connexion">Connexion</a><a class="btn btn-sm btn-navy" href="#inscription">Inscription</a><a class="btn btn-sm btn-ghost" href="#oubli">Mot de passe oublié</a><a class="btn btn-sm btn-ghost" href="#reset">Nouveau mot de passe</a></div>
+    <div class="auth">
+      <div class="auth-side">
+        <a class="brand" style="color:#fff" href="#accueil"><svg width="30" height="30" viewBox="0 0 32 32"><path d="M16 3C16 3 6 14.5 6 20.5a10 10 0 0 0 20 0C26 14.5 16 3 16 3Z" fill="#1CA7EC"/></svg>AquaSecure</a>
+        <div><h2 style="color:#fff">Devenez les yeux du réseau.</h2><p style="color:#C7DDEB;margin-top:12px;max-width:40ch">Un compte vous permet de suivre vos signalements et de recevoir les alertes de coupure de votre quartier.</p></div>
+        <div></div>
+      </div>
+      <form class="auth-form" novalidate>
+        <div><h2>Créer un compte</h2></div>
+        <div class="grid g2" style="gap:12px;grid-template-columns:1fr 1fr"><div class="field"><label for="rf">Prénom</label><input class="input" id="rf" value="Sana"></div><div class="field"><label for="rl">Nom</label><input class="input" id="rl" value="Ben Ali"></div></div>
+        <div class="field is-invalid"><label for="re">Adresse e-mail</label><input class="input" id="re" value="sana.benali@mail"><span class="error">Saisissez une adresse e-mail valide.</span></div>
+        <div class="field"><label for="rz">Commune</label><select class="input" id="rz"><option>Ariana</option><option>Tunis</option><option>Ben Arous</option><option>La Manouba</option></select></div>
+        <div class="field"><label for="rp">Mot de passe</label><input class="input" id="rp" type="password" value="motdepasse"><span class="hint">8 caractères minimum, dont un chiffre et une majuscule.</span></div>
+        <div class="field is-invalid"><label for="rp2">Confirmer le mot de passe</label><input class="input" id="rp2" type="password" value="motdepas"><span class="error">Les deux mots de passe ne correspondent pas.</span></div>
+        <label class="check"><input type="checkbox" checked> J'accepte les conditions d'utilisation</label>
+        <button class="btn btn-primary" style="justify-content:center" type="button">Créer mon compte</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<section class="screen" data-page="oubli" hidden>
+  <div class="wrap">
+    <div class="auth-switch"><a class="btn btn-sm btn-ghost" href="#connexion">Connexion</a><a class="btn btn-sm btn-ghost" href="#inscription">Inscription</a><a class="btn btn-sm btn-navy" href="#oubli">Mot de passe oublié</a><a class="btn btn-sm btn-ghost" href="#reset">Nouveau mot de passe</a></div>
+    <div class="card" style="max-width:480px;margin:0 auto"><form class="auth-form" novalidate>
+      <div><h2>Mot de passe oublié</h2><p class="muted" style="margin-top:6px">Indiquez votre adresse e-mail : nous vous enverrons un lien pour choisir un nouveau mot de passe.</p></div>
+      <div class="field"><label for="fe">Adresse e-mail</label><input class="input" id="fe" value="sana.benali@mail.tn"></div>
+      <div class="card" style="padding:12px 14px;background:var(--ok-soft);border-color:transparent;color:#13877D;font-size:.88rem">Si un compte existe pour cette adresse, un lien de réinitialisation vient d'être envoyé.</div>
+      <button class="btn btn-primary" style="justify-content:center" type="button">Envoyer le lien</button>
+      <a href="#connexion" class="muted" style="text-align:center;font-size:.9rem">← Retour à la connexion</a>
+    </form></div>
+  </div>
+</section>
+
+<section class="screen" data-page="reset" hidden>
+  <div class="wrap">
+    <div class="auth-switch"><a class="btn btn-sm btn-ghost" href="#connexion">Connexion</a><a class="btn btn-sm btn-ghost" href="#inscription">Inscription</a><a class="btn btn-sm btn-ghost" href="#oubli">Mot de passe oublié</a><a class="btn btn-sm btn-navy" href="#reset">Nouveau mot de passe</a></div>
+    <div class="card" style="max-width:480px;margin:0 auto"><form class="auth-form" novalidate>
+      <div><h2>Choisir un nouveau mot de passe</h2></div>
+      <div class="field"><label for="ne">Adresse e-mail</label><input class="input" id="ne" value="sana.benali@mail.tn" readonly></div>
+      <div class="field"><label for="np">Nouveau mot de passe</label><input class="input" id="np" type="password" value="Aqua2026x"><div class="progress" style="height:5px"><span style="width:70%;background:var(--teal)"></span></div><span class="hint">Robustesse : bonne</span></div>
+      <div class="field"><label for="np2">Confirmer</label><input class="input" id="np2" type="password" value="Aqua2026x"></div>
+      <button class="btn btn-primary" style="justify-content:center" type="button">Enregistrer le mot de passe</button>
+    </form></div>
+  </div>
+</section>
+
+<!-- ================= PROFIL : resources/views/front/profile/edit.blade.php ================= -->
+<section class="screen" data-page="profil" hidden>
+  <div class="wrap">
+    <div class="screen-head"><div class="stack" style="gap:8px"><span class="eyebrow">Espace citoyen</span><h2>Mon profil</h2></div></div>
+    <div class="profile-layout">
+      <aside class="card pad stack" style="gap:16px">
+        <div class="stack" style="align-items:center;text-align:center;gap:8px"><div class="big-avatar">SB</div><strong>Sana Ben Ali</strong><span class="muted" style="font-size:.85rem">Membre depuis février 2025</span></div>
+        <nav class="side-menu stack" style="gap:2px">
+          <a href="#profil" class="on">Informations personnelles</a><a href="#profil">Mot de passe</a><a href="#profil">Mes signalements</a><a href="#profil">Mes contributions</a><a href="#profil">Notifications</a>
+        </nav>
+      </aside>
+      <div class="stack" style="gap:24px">
+        <form class="card pad stack" style="gap:16px" novalidate>
+          <div class="row" style="justify-content:space-between"><h3>Informations personnelles</h3><button class="btn btn-ghost btn-sm" type="button">Changer la photo</button></div>
+          <div class="grid g2" style="gap:14px">
+            <div class="field"><label for="pf">Prénom</label><input class="input" id="pf" value="Sana"></div>
+            <div class="field"><label for="pl">Nom</label><input class="input" id="pl" value="Ben Ali"></div>
+            <div class="field"><label for="pe">E-mail</label><input class="input" id="pe" value="sana.benali@mail.tn"></div>
+            <div class="field"><label for="pt">Téléphone</label><input class="input" id="pt" value="22 451 870"></div>
+            <div class="field"><label for="pa">Adresse</label><input class="input" id="pa" value="12 rue Ibn Sina, Ariana"></div>
+            <div class="field"><label for="pc">Commune</label><select class="input" id="pc"><option>Ariana</option><option>Tunis</option></select></div>
+          </div>
+          <div class="row" style="justify-content:flex-end"><button class="btn btn-primary" type="button" data-toast="Profil mis à jour.">Enregistrer</button></div>
+        </form>
+        <form class="card pad stack" style="gap:16px" novalidate>
+          <h3>Changer le mot de passe</h3>
+          <div class="grid g3" style="gap:14px">
+            <div class="field"><label for="op">Mot de passe actuel</label><input class="input" id="op" type="password"></div>
+            <div class="field"><label for="n1">Nouveau</label><input class="input" id="n1" type="password"></div>
+            <div class="field"><label for="n2">Confirmation</label><input class="input" id="n2" type="password"></div>
+          </div>
+          <div class="row" style="justify-content:flex-end"><button class="btn btn-navy" type="button">Mettre à jour</button></div>
+        </form>
+        <div class="card pad">
+          <div class="row" style="justify-content:space-between;margin-bottom:8px"><h3>Mes signalements</h3><span class="muted mono" style="font-size:.85rem">4 au total</span></div>
+          <div id="myReports"></div>
+        </div>
+        <div class="grid g2">
+          <div class="card pad"><h3 style="margin-bottom:10px">Mes contributions</h3>
+            <div class="budget-row"><span>Réservoir de La Soukra</span><span class="mono">50 TND</span></div>
+            <div class="budget-row"><span>Conduite Avenue de la Liberté</span><span class="mono">30 TND</span></div>
+            <div class="budget-row" style="border:0;font-weight:700"><span>Total</span><span class="mono">80 TND</span></div></div>
+          <div class="card pad"><h3 style="margin-bottom:4px">Notifications</h3>
+            <div class="pref"><span>Changement de statut de mes signalements</span><label class="toggle"><input type="checkbox" checked aria-label="Statut"><span></span></label></div>
+            <div class="pref"><span>Coupures programmées dans ma commune</span><label class="toggle"><input type="checkbox" checked aria-label="Coupures"><span></span></label></div>
+            <div class="pref" style="border:0"><span>Avancement des projets soutenus</span><label class="toggle"><input type="checkbox" aria-label="Projets"><span></span></label></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<!-- ============ FOOTER : resources/views/layouts/front/partials/footer.blade.php ============ -->
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div class="stack" style="gap:12px"><span class="brand" style="color:#fff"><svg width="28" height="28" viewBox="0 0 32 32"><path d="M16 3C16 3 6 14.5 6 20.5a10 10 0 0 0 20 0C26 14.5 16 3 16 3Z" fill="#1CA7EC"/></svg>AquaSecure</span><p style="max-width:38ch;font-size:.92rem">Plateforme citoyenne de surveillance des infrastructures d'eau potable, en lien avec les municipalités et les régies des eaux.</p></div>
+      <div><h4>Plateforme</h4><a href="#carte">Carte du réseau</a><a href="#signaler">Signaler un incident</a><a href="#projets">Projets</a></div>
+      <div><h4>Ressources</h4><a href="#accueil">Qualité de l'eau</a><a href="#accueil">Gestes économes</a><a href="#accueil">FAQ</a></div>
+      <div><h4>Contact</h4><span style="display:block;font-size:.92rem;padding-block:4px">Numéro vert : 80 100 319</span><span style="display:block;font-size:.92rem;padding-block:4px">contact@aquasecure.tn</span></div>
+    </div>
+    <div class="legal"><span>© 2026 AquaSecure · Projet Laravel 12</span><span>Mentions légales · Confidentialité</span></div>
+  </div>
+</footer>
+
+<!-- ============ CHATBOT IA : resources/views/components/chatbot.blade.php ============ -->
+<div class="chat-win" id="chatWin" hidden>
+  <div class="chat-head"><div><strong>Assistant AquaSecure</strong><div style="font-size:.78rem;color:#9CBCD1">IA · répond en quelques secondes</div></div><button id="chatClose" style="background:none;border:0;color:#fff;font-size:1.2rem;cursor:pointer" aria-label="Fermer">×</button></div>
+  <div class="chat-body" id="chatBody">
+    <div class="msg bot">Bonjour Sana ! Je peux vous renseigner sur la qualité de l'eau, les coupures prévues ou l'état d'un signalement.</div>
+    <div class="msg me">L'eau du robinet a un goût de chlore, c'est normal ?</div>
+    <div class="msg bot">Oui. Le relevé de ce matin à Ariana indique 0,42 mg/L de chlore résiduel, dans la norme (0,1 à 0,5 mg/L). Laissez l'eau reposer 30 minutes au réfrigérateur pour atténuer le goût.</div>
+    <div class="chips"><button type="button">Coupures prévues ?</button><button type="button">Statut de mon signalement</button><button type="button">L'eau est trouble</button></div>
+  </div>
+  <form class="chat-input" id="chatForm"><input class="input" id="chatIn" placeholder="Posez votre question…" aria-label="Message"><button class="btn btn-primary btn-sm" type="submit">Envoyer</button></form>
+</div>
+<button class="chat-fab" id="chatFab"><span class="ic">✦</span>Assistant AquaSecure</button>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const incidents=[
+ {ref:"INC-2026-0918",t:"Fuite importante rue Ibn Sina",type:"Fuite",zone:"Ariana",sev:["Élevée","b-crit"],st:["En cours","b-info"],d:"03/10/2026",ago:"il y a 2 h"},
+ {ref:"INC-2026-0915",t:"Eau trouble et odeur de terre",type:"Contamination",zone:"Ben Arous",sev:["Critique","b-crit"],st:["Signalé","b-warn"],d:"03/10/2026",ago:"il y a 5 h"},
+ {ref:"INC-2026-0907",t:"Coupure prolongée cité El Khadra",type:"Coupure",zone:"Tunis",sev:["Moyenne","b-warn"],st:["En cours","b-info"],d:"02/10/2026",ago:"hier"},
+ {ref:"INC-2026-0899",t:"Suintement au pied du compteur",type:"Fuite",zone:"La Manouba",sev:["Faible","b-ok"],st:["Résolu","b-ok"],d:"01/10/2026",ago:"il y a 2 j"},
+ {ref:"INC-2026-0884",t:"Pression très faible aux étages",type:"Coupure",zone:"Ariana",sev:["Moyenne","b-warn"],st:["Résolu","b-ok"],d:"29/09/2026",ago:"il y a 4 j"},
+ {ref:"INC-2026-0871",t:"Conduite éclatée avenue de Carthage",type:"Fuite",zone:"Tunis",sev:["Critique","b-crit"],st:["Résolu","b-ok"],d:"27/09/2026",ago:"il y a 6 j"}
+];
+const icon={Fuite:["💧","var(--water-soft)"],Contamination:["⚠️","var(--crit-soft)"],Coupure:["🚱","var(--warn-soft)"]};
+const projects=[
+ {n:"Réhabilitation du réservoir de La Soukra",tag:["Décontamination","b-warn"],g:"linear-gradient(135deg,#0E5A85,#2EC4B6)",c:168400,o:220000,days:58,d:"Fissures du radier et dépôts de manganèse sur un réservoir de 5 000 m³."},
+ {n:"Remplacement de 2,4 km de conduites en fonte",tag:["Rénovation","b-info"],g:"linear-gradient(135deg,#0B3C5D,#1CA7EC)",c:96000,o:310000,days:112,d:"Conduites de 1962 responsables de 40 % des fuites du quartier Bab Saadoun."},
+ {n:"Capteurs de qualité dans 12 écoles",tag:["Surveillance","b-ok"],g:"linear-gradient(135deg,#126D73,#7FD8C9)",c:41500,o:48000,days:21,d:"Mesure en continu du chlore et de la turbidité aux points d'eau scolaires."},
+ {n:"Station de pompage solaire de Raoued",tag:["Sécheresse","b-warn"],g:"linear-gradient(135deg,#3A5F7D,#F4A261)",c:22000,o:180000,days:140,d:"Maintenir la pression en été malgré les délestages électriques."},
+ {n:"Traitement du nitrate au forage de Mornag",tag:["Décontamination","b-crit"],g:"linear-gradient(135deg,#5B2333,#E63946)",c:133000,o:150000,days:9,d:"Taux de nitrate mesuré à 62 mg/L, au-dessus du seuil de 50 mg/L."},
+ {n:"Sectorisation du réseau de Ben Arous",tag:["Rénovation","b-info"],g:"linear-gradient(135deg,#0F4C6E,#5CC8F0)",c:57000,o:95000,days:76,d:"Débitmètres de secteur pour localiser les fuites invisibles."}
+];
+const fmt=n=>n.toLocaleString("fr-FR").replace(/ /g," ");
+const projCard=p=>{const pc=Math.round(p.c/p.o*100);return `<a class="card proj-card" href="#projet" style="text-decoration:none"><div class="proj-img" style="background:${p.g}"><span class="badge ${p.tag[1]}">${p.tag[0]}</span></div><div class="proj-body"><h3>${p.n}</h3><p class="muted" style="font-size:.9rem">${p.d}</p><div style="margin-top:auto" class="stack"><div class="progress"><span style="width:${pc}%"></span></div><div class="money"><span><strong class="mono">${fmt(p.c)}</strong> / <span class="mono">${fmt(p.o)} TND</span></span><span class="muted">${pc} % · ${p.days} j</span></div></div></div></a>`};
+document.getElementById("homeProjects").innerHTML=projects.slice(0,3).map(projCard).join("");
+document.getElementById("allProjects").innerHTML=projects.map(projCard).join("");
+document.getElementById("homeIncidents").innerHTML=incidents.slice(0,4).map(i=>`<div class="inc-item"><div class="inc-ic" style="background:${icon[i.type][1]}">${icon[i.type][0]}</div><div style="flex:1;min-width:0"><strong>${i.t}</strong><div class="muted" style="font-size:.85rem">${i.zone} · ${i.ago}</div></div><span class="badge ${i.st[1]}">${i.st[0]}</span></div>`).join("");
+document.getElementById("myReports").innerHTML=incidents.filter((_,k)=>[0,3,4].includes(k)).map(i=>`<div class="inc-item"><div class="inc-ic" style="background:${icon[i.type][1]}">${icon[i.type][0]}</div><div style="flex:1;min-width:0"><strong>${i.t}</strong><div class="muted mono" style="font-size:.8rem">${i.ref} · ${i.d}</div></div><span class="badge ${i.st[1]}">${i.st[0]}</span></div>`).join("");
+document.getElementById("incTable").innerHTML=incidents.map(i=>`<tr><td class="mono" style="font-size:.85rem">${i.ref}</td><td><strong>${i.t}</strong></td><td>${icon[i.type][0]} ${i.type}</td><td>${i.zone}</td><td><span class="badge ${i.sev[1]}">${i.sev[0]}</span></td><td><span class="badge ${i.st[1]}">${i.st[0]}</span></td><td class="mono">${i.d}</td></tr>`).join("");
+
+/* Carte schématique */
+const sites=[
+ {x:180,y:150,s:"ok",n:"Réservoir Belvédère",t:"Réservoir · 12 000 m³",z:"Tunis Centre",i:"14/09/2026",l:"Niveau 78 %"},
+ {x:420,y:110,s:"warn",n:"Station de pompage Ariana Nord",t:"Pompage · 3 pompes",z:"Ariana",i:"02/08/2026",l:"Pression 2,4 bar"},
+ {x:640,y:180,s:"crit",n:"Réservoir de La Soukra",t:"Réservoir · 5 000 m³",z:"Ariana",i:"12/03/2026",l:"Manganèse 0,12 mg/L"},
+ {x:300,y:330,s:"ok",n:"Station de traitement Ghdir El Golla",t:"Traitement · 4 m³/s",z:"La Manouba",i:"28/09/2026",l:"Chlore 0,42 mg/L"},
+ {x:560,y:380,s:"warn",n:"Conduite DN 600 Ben Arous",t:"Conduite principale · 4,1 km",z:"Ben Arous",i:"19/07/2026",l:"Pertes 6 m³/h"},
+ {x:760,y:430,s:"ok",n:"Réservoir Mégrine",t:"Réservoir · 8 000 m³",z:"Ben Arous",i:"01/09/2026",l:"Niveau 64 %"},
+ {x:120,y:440,s:"crit",n:"Forage de Mornag F3",t:"Forage · 35 L/s",z:"Ben Arous",i:"21/09/2026",l:"Nitrate 62 mg/L"}
+];
+const col={ok:"var(--teal)",warn:"var(--warn)",crit:"var(--crit)"},lbl={ok:["Bon","b-ok"],warn:["À surveiller","b-warn"],crit:["Critique","b-crit"]};
+let svg=`<rect width="900" height="560" fill="var(--surface-2)"/>
+<path d="M620 0 C700 60 820 70 900 50 L900 0Z" fill="var(--water-soft)"/>
+<path d="M0 260 C200 240 380 300 900 280" stroke="var(--line)" stroke-width="16" fill="none"/>
+<path d="M260 0 C280 200 240 400 300 560" stroke="var(--line)" stroke-width="12" fill="none"/>
+<path d="M600 0 C580 200 640 380 620 560" stroke="var(--line)" stroke-width="12" fill="none"/>
+<path d="M0 470 L900 420" stroke="var(--line)" stroke-width="10" fill="none"/>
+<g stroke="var(--water)" stroke-width="3" fill="none" opacity=".55" stroke-dasharray="2 0">
+<path d="M300 330 L180 150 L420 110 L640 180"/><path d="M300 330 L560 380 L760 430"/><path d="M300 330 L120 440"/></g>
+<text x="40" y="40" fill="var(--muted)" font-family="IBM Plex Mono,monospace" font-size="12">TUNIS</text>
+<text x="440" y="60" fill="var(--muted)" font-family="IBM Plex Mono,monospace" font-size="12">ARIANA</text>
+<text x="660" y="520" fill="var(--muted)" font-family="IBM Plex Mono,monospace" font-size="12">BEN AROUS</text>
+<text x="40" y="520" fill="var(--muted)" font-family="IBM Plex Mono,monospace" font-size="12">MORNAG</text>`;
+sites.forEach((s,k)=>{svg+=`<g class="marker" data-k="${k}" tabindex="0"><circle cx="${s.x}" cy="${s.y}" r="13" fill="${col[s.s]}" opacity=".22"/><circle cx="${s.x}" cy="${s.y}" r="7" fill="${col[s.s]}" stroke="#fff" stroke-width="2.5"/></g>`});
+document.getElementById("mapSvg").innerHTML=svg;
+const pop=document.getElementById("mapPop");
+function showSite(k){const s=sites[k];pop.innerHTML=`<div class="row" style="justify-content:space-between"><span class="badge ${lbl[s.s][1]}">${lbl[s.s][0]}</span><span class="muted mono" style="font-size:.75rem">${s.z}</span></div><h3>${s.n}</h3><div class="muted" style="font-size:.88rem">${s.t}</div><div class="budget-row"><span>Dernière inspection</span><span class="mono">${s.i}</span></div><div class="budget-row" style="border:0"><span>Mesure</span><span class="mono">${s.l}</span></div><a href="#signaler" class="btn btn-ghost btn-sm" style="justify-content:center">Signaler un problème ici</a>`}
+showSite(2);
+document.getElementById("mapSvg").addEventListener("click",e=>{const g=e.target.closest(".marker");if(g)showSite(+g.dataset.k)});
+document.getElementById("mapSvg").addEventListener("keydown",e=>{const g=e.target.closest(".marker");if(g&&e.key==="Enter")showSite(+g.dataset.k)});
+
+/* Routage par ancre */
+const pages=[["accueil","Accueil"],["carte","Carte"],["signaler","Signaler"],["incidents","Incidents"],["projets","Projets"],["projet","Détail projet"],["connexion","Connexion"],["inscription","Inscription"],["oubli","Mdp oublié"],["reset","Reset mdp"],["profil","Profil"]];
+document.getElementById("switcher").innerHTML='<span class="muted" style="padding:5px 4px">Écrans :</span>'+pages.map(p=>`<a href="#${p[0]}" data-sw="${p[0]}">${p[1]}</a>`).join("");
+function route(target){let h=target;if(!h){try{h=location.hash.slice(1)}catch(e){}}h=h||"accueil";const id=pages.some(p=>p[0]===h)?h:"accueil";
+ document.querySelectorAll("[data-page]").forEach(s=>s.hidden=s.dataset.page!==id);
+ document.querySelectorAll("[data-nav]").forEach(a=>a.classList.toggle("active",a.dataset.nav===id||(id==="projet"&&a.dataset.nav==="projets")));
+ document.querySelectorAll("[data-sw]").forEach(a=>a.classList.toggle("on",a.dataset.sw===id));
+ document.getElementById("nav").classList.remove("open");document.getElementById("userDrop").hidden=true;window.scrollTo(0,0)}
+addEventListener("hashchange",()=>route());route();
+/* Navigation par clic : fonctionne aussi dans un aperçu qui bloque les ancres */
+document.addEventListener("click",e=>{const a=e.target.closest('a[href^="#"]');if(!a)return;const id=a.getAttribute("href").slice(1);if(!pages.some(p=>p[0]===id))return;e.preventDefault();route(id);try{history.replaceState(null,"","#"+id)}catch(err){}});
+/* Boutons sans action propre : retour visuel (à remplacer par les routes Laravel) */
+document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.type==="submit"||b.id||b.dataset.toast||b.dataset.del||b.closest(".dropdown")||b.closest(".chips")||b.closest("#chatWin")||b.classList.contains("act")&&!b.title)return;if(b.onclick)return;showToast("« "+(b.title||b.textContent.trim().replace(/\s+/g," "))+" » : action simulée dans ce template.")});
+
+/* Interactions */
+document.getElementById("burger").onclick=()=>document.getElementById("nav").classList.toggle("open");
+const ab=document.getElementById("avatarBtn"),ud=document.getElementById("userDrop");
+ab.onclick=e=>{e.stopPropagation();ud.hidden=!ud.hidden;ab.setAttribute("aria-expanded",!ud.hidden)};
+document.addEventListener("click",e=>{if(!e.target.closest(".user-menu"))ud.hidden=true});
+const cw=document.getElementById("chatWin");
+document.getElementById("chatFab").onclick=()=>cw.hidden=!cw.hidden;
+document.getElementById("chatClose").onclick=()=>cw.hidden=true;
+document.getElementById("chatForm").onsubmit=e=>{e.preventDefault();const v=document.getElementById("chatIn").value.trim();if(!v)return;const b=document.getElementById("chatBody");b.insertAdjacentHTML("beforeend",`<div class="msg me"></div>`);b.lastElementChild.textContent=v;setTimeout(()=>{b.insertAdjacentHTML("beforeend",`<div class="msg bot">Je vérifie les données de votre commune… (réponse simulée dans ce template)</div>`);b.scrollTop=b.scrollHeight},500);document.getElementById("chatIn").value="";b.scrollTop=b.scrollHeight};
+const toast=document.getElementById("toast");let tt;
+function showToast(m){toast.textContent="✓ "+m;toast.hidden=false;clearTimeout(tt);tt=setTimeout(()=>toast.hidden=true,2800)}
+document.querySelectorAll("[data-toast]").forEach(b=>b.onclick=()=>showToast(b.dataset.toast));
+document.getElementById("reportForm").onsubmit=e=>{e.preventDefault();showToast("Signalement INC-2026-0921 envoyé. Vous serez notifiée de son traitement.")};
+
+document.querySelectorAll(".chips button").forEach(c=>c.onclick=()=>{document.getElementById("chatIn").value=c.textContent;document.getElementById("chatForm").requestSubmit()});
+/* Ondulations du hero */
+(function(){const c=document.getElementById("ripple"),x=c.getContext("2d");if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+let w,h,t=0;function rs(){w=c.width=c.offsetWidth*devicePixelRatio;h=c.height=c.offsetHeight*devicePixelRatio}rs();addEventListener("resize",rs);
+(function f(){x.clearRect(0,0,w,h);x.strokeStyle="rgba(127,216,255,.5)";x.lineWidth=1.2*devicePixelRatio;
+for(let i=0;i<9;i++){x.beginPath();for(let px=0;px<=w;px+=12){const y=h*(.15+i*.1)+Math.sin(px/140/devicePixelRatio+t+i*.7)*10*devicePixelRatio;px?x.lineTo(px,y):x.moveTo(px,y)}x.stroke()}
+t+=.012;requestAnimationFrame(f)})()})();
+</script>
+</body>
+</html>
