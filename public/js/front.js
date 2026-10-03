@@ -63,10 +63,6 @@ showSite(2);
 on("mapSvg","click",e=>{const g=e.target.closest(".marker");if(g)showSite(+g.dataset.k)});
 on("mapSvg","keydown",e=>{const g=e.target.closest(".marker");if(g&&e.key==="Enter")showSite(+g.dataset.k)});
 
-/* Lien actif du menu : l'écran courant est la section [data-page] rendue par la vue */
-const cur=(document.querySelector("[data-page]")||{dataset:{}}).dataset.page;
-if(cur)document.querySelectorAll("[data-nav]").forEach(a=>a.classList.toggle("active",a.dataset.nav===cur||(cur==="projet"&&a.dataset.nav==="projets")));
-
 /* Interactions */
 on("burger","click",()=>{const n=$("nav");if(n)n.classList.toggle("open")});
 const ab=$("avatarBtn"),ud=$("userDrop");
@@ -78,8 +74,9 @@ on("chatClose","click",()=>{if(cw)cw.hidden=true});
 on("chatForm","submit",e=>{e.preventDefault();const ci=$("chatIn"),b=$("chatBody");if(!ci||!b)return;const v=ci.value.trim();if(!v)return;b.insertAdjacentHTML("beforeend",`<div class="msg me"></div>`);b.lastElementChild.textContent=v;setTimeout(()=>{b.insertAdjacentHTML("beforeend",`<div class="msg bot">Je vérifie les données de votre commune… (réponse simulée dans ce template)</div>`);b.scrollTop=b.scrollHeight},500);ci.value="";b.scrollTop=b.scrollHeight});
 const toast=$("toast");let tt;
 function showToast(m){if(!toast)return;toast.textContent="✓ "+m;toast.hidden=false;clearTimeout(tt);tt=setTimeout(()=>toast.hidden=true,2800)}
+/* Message flash rendu par Laravel (session status) : masqué comme les autres toasts */
+if(toast&&!toast.hidden)tt=setTimeout(()=>toast.hidden=true,2800);
 document.querySelectorAll("[data-toast]").forEach(b=>b.addEventListener("click",()=>showToast(b.dataset.toast)));
-on("reportForm","submit",e=>{e.preventDefault();showToast("Signalement INC-2026-0921 envoyé. Vous serez notifiée de son traitement.")});
 
 document.querySelectorAll(".chips button").forEach(c=>c.addEventListener("click",()=>{const ci=$("chatIn"),cf=$("chatForm");if(!ci||!cf)return;ci.value=c.textContent;cf.requestSubmit()}));
 /* Ondulations du hero */

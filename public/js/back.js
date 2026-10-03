@@ -24,20 +24,9 @@ const I={
  ban:'<circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/>'
 };
 const ico=(k,s=17)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${I[k]}</svg>`;
-const menu=[["Pilotage",[["dashboard","Tableau de bord","dash"],["infras","Infrastructures","infra",null,["infra-form"]],["incidents","Incidents","inc","7",["incident"]],["interventions","Interventions","tool"]]],
- ["Financement",[["projets","Projets de rénovation","proj",null,["projet-form"]],["financements","Financements","money"]]],
- ["Intelligence",[["ia","Analyses IA","ai"]]],
- ["Administration",[["users","Utilisateurs","users",null,["user-form"]],["roles","Rôles et permissions","shield"],["parametres","Paramètres","cog"]]]];
-fill("side",menu.map(g=>`<div class="side-group"><div class="label">${g[0]}</div>${g[1].map(m=>`<a href="${url(m[0])}" data-nav="${m[0]}" data-also="${(m[4]||[]).join(" ")}">${ico(m[2])}${m[1]}${m[3]?`<span class="count">${m[3]}</span>`:""}</a>`).join("")}</div>`).join(""));
-
-/* KPIs avec sparklines */
+/* Sparklines des cartes <x-kpi-card :spark="[...]"> (attributs data-spark et data-color) */
 const spark=(arr,c)=>{const mx=Math.max(...arr),mn=Math.min(...arr),w=160,h=30;const p=arr.map((v,i)=>[i*(w/(arr.length-1)),h-3-((v-mn)/(mx-mn||1))*(h-6)]);const d=p.map((q,i)=>(i?"L":"M")+q[0].toFixed(1)+" "+q[1].toFixed(1)).join(" ");const last=p[p.length-1];return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="${d} L${w} ${h} L0 ${h}Z" fill="${c}" opacity=".12"/><path d="${d}" fill="none" stroke="${c}" stroke-width="1.8"/><circle cx="${last[0]}" cy="${last[1]}" r="2.8" fill="${c}"/></svg>`};
-const kpis=[["Incidents ouverts","27","+4 vs semaine dernière","up",[18,20,19,23,22,25,23,27],"var(--water)"],
- ["Incidents critiques","3","+2 depuis hier","up",[1,0,1,1,2,1,1,3],"var(--crit)"],
- ["Ouvrages à risque","14","−3 ce mois","down",[19,18,18,17,16,16,15,14],"var(--warn)"],
- ["Fonds collectés","518 900","TND · +12 % ce mois","down",[310,340,365,390,420,455,490,519],"var(--teal)"],
- ["Utilisateurs inscrits","4 218","+86 ce mois","down",[3800,3870,3940,4010,4060,4120,4170,4218],"var(--water)"]];
-fill("kpis",kpis.map(k=>`<div class="card kpi"><span class="label">${k[0]}</span><span class="v">${k[1]}</span><span class="d ${k[3]}">${k[2]}</span>${spark(k[4],k[5])}</div>`).join(""));
+document.querySelectorAll("[data-spark]").forEach(e=>e.insertAdjacentHTML("beforeend",spark(e.dataset.spark.split(",").map(Number),e.dataset.color)));
 
 /* Bar chart */
 (function(){const m=["Avr","Mai","Juin","Juil","Août","Sep"],a=[42,51,68,84,91,73],b=[38,47,59,70,86,69];const W=560,H=240,L=36,B=26,T=10,max=100;const sx=(W-L-10)/m.length;let s="";
@@ -74,7 +63,7 @@ const users=[["Karim Trabelsi","k.trabelsi@regie-ariana.tn","Administrateur","R�
 const roleC={"Administrateur":"b-crit","Gestionnaire réseau":"b-info","Technicien terrain":"b-warn","Citoyen":"b-mute"};
 fill("userTable",users.map(u=>`<tr><td><div class="row" style="flex-wrap:nowrap"><span class="av" style="background:${u[6]}">${u[0].split(" ").map(w=>w[0]).slice(0,2).join("")}</span><span><strong>${u[0]}</strong><br><span class="muted" style="font-size:.8rem">${u[1]}</span></span></div></td><td><span class="badge ${roleC[u[2]]}">${u[2]}</span></td><td>${u[3]}</td><td><span class="badge ${u[4]==="Actif"?"b-ok":"b-crit"} dot">${u[4]}</span></td><td class="mono">${u[5]}</td><td><div class="acts"><a class="act" href="${url("user-form")}" title="Modifier">${ico("edit",15)}</a><button class="act" title="${u[4]==="Actif"?"Suspendre":"Réactiver"}" data-toast="Compte de ${u[0]} ${u[4]==="Actif"?"suspendu":"réactivé"}.">${ico("ban",15)}</button><button class="act del" data-del="${u[0]}" title="Supprimer">${ico("trash",15)}</button></div></td></tr>`).join(""));
 const mods=[["Infrastructures",[1,1,1,0]],["Incidents",[1,1,1,1]],["Interventions",[1,1,1,0]],["Projets",[1,1,1,0]],["Financements",[1,1,0,0]],["Analyses IA",[1,0,0,0]],["Utilisateurs",[1,0,0,0]]];
-fill("matrix",mods.map((m,i)=>`<tr><td><strong>${m[0]}</strong></td>${m[1].map((v,j)=>`<td><input type="checkbox" id="perm${i}${j}" ${v?"checked":""} aria-label="${m[0]} ${["voir","créer","modifier","supprimer"][j]}"></td>`).join("")}</tr>`).join(""));
+fill("matrix",mods.map((m,i)=>`<tr><td><strong>${m[0]}</strong></td>${m[1].map((v,j)=>`<td><input type="checkbox" id="perm${i}${j}" name="permissions[${m[0]}][]" value="${["view","create","update","delete"][j]}" ${v?"checked":""} aria-label="${m[0]} ${["voir","créer","modifier","supprimer"][j]}"></td>`).join("")}</tr>`).join(""));
 const risk=[["Réservoir de La Soukra","Âge 39 ans · fissures radier",74],["Station Ariana Nord","2 pannes pompe en 60 j",68],["Conduite fonte Bab Saadoun","Fonte grise 1962 · 9 fuites/an",61],["Conduite DN 600 Ben Arous","Pertes 6 m³/h",42],["Réservoir Mégrine","Inspection récente",12]];
 fill("riskTable",risk.map(r=>{const c=r[2]>=60?"var(--crit)":r[2]>=35?"var(--warn)":"var(--teal)";return `<tr><td><strong>${r[0]}</strong></td><td class="muted" style="font-size:.84rem">${r[1]}</td><td><div class="risk"><div class="bar"><span style="width:${r[2]}%;background:${c}"></span></div><span class="mono" style="width:38px;text-align:right">${r[2]} %</span></div></td></tr>`}).join(""));
 /* Anomaly chart */
@@ -87,10 +76,6 @@ s+=`<text x="${x(8)+10}" y="${y(1.2)+4}" style="fill:var(--crit-fg)">03:00 · 1,
 [0,6,12,18,23].forEach(i=>s+=`<text x="${x(i)}" y="${H-6}" text-anchor="middle">${String(i).padStart(2,"0")}h</text>`);
 fill("anomChart",s)})();
 
-/* Lien actif du menu : l'écran courant est la section [data-page] rendue par la vue */
-const cur=(document.querySelector("[data-page]")||{dataset:{}}).dataset.page;
-if(cur)document.querySelectorAll("[data-nav]").forEach(a=>a.classList.toggle("active",a.dataset.nav===cur||(a.dataset.also||"").split(" ").includes(cur)));
-
 /* Menus déroulants */
 const nd=$("notifDrop"),md=$("meDrop"),sb=$("sidebar");
 function closeDrops(){if(nd)nd.hidden=true;if(md)md.hidden=true}
@@ -101,12 +86,13 @@ on("notifBtn","click",e=>{e.stopPropagation();if(!nd)return;const o=nd.hidden;cl
 on("meBtn","click",e=>{e.stopPropagation();if(!md)return;const o=md.hidden;closeDrops();md.hidden=!o});
 document.addEventListener("click",e=>{if(!e.target.closest(".dropdown"))closeDrops();if(sb&&!e.target.closest(".sidebar")&&!e.target.closest("#burger"))sb.classList.remove("open")});
 function toast(m,err){const box=$("toasts");if(!box)return;const t=document.createElement("div");t.className="toast"+(err?" err":"");t.textContent=(err?"✕ ":"✓ ")+m;box.appendChild(t);setTimeout(()=>t.remove(),3200)}
-const modal=$("modal");let pending="";
-document.addEventListener("click",e=>{const d=e.target.closest("[data-del]");if(d&&modal){pending=d.dataset.del;const mt=$("mText");if(mt)mt.textContent=`« ${pending} » sera supprimé définitivement, ainsi que les données qui lui sont rattachées.`;modal.hidden=false;const ok=$("mOk");if(ok)ok.focus()}
+/* Message flash rendu par Laravel (session status) : retiré comme les autres toasts */
+document.querySelectorAll("#toasts .toast").forEach(t=>setTimeout(()=>t.remove(),3200));
+const modal=$("modal");let pending="",pendingAction="";
+document.addEventListener("click",e=>{const d=e.target.closest("[data-del]");if(d&&modal){pending=d.dataset.del;pendingAction=d.dataset.action||"";const mt=$("mText");if(mt)mt.textContent=`« ${pending} » sera supprimé définitivement, ainsi que les données qui lui sont rattachées.`;modal.hidden=false;const ok=$("mOk");if(ok)ok.focus()}
  const t=e.target.closest("[data-toast]");if(t)toast(t.dataset.toast)});
 on("mCancel","click",()=>modal.hidden=true);
 if(modal)modal.addEventListener("click",e=>{if(e.target===modal)modal.hidden=true});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&modal)modal.hidden=true});
-on("mOk","click",()=>{modal.hidden=true;toast(`« ${pending} » a été supprimé.`)});
-document.querySelectorAll("form[data-submit]").forEach(f=>f.addEventListener("submit",e=>{e.preventDefault();toast(f.dataset.submit)}));
+on("mOk","click",()=>{const f=$("mForm");if(pendingAction&&f){f.action=pendingAction;f.submit();return}modal.hidden=true;toast(`« ${pending} » a été supprimé.`)});
 const rg=$("rolesGrid");if(rg&&innerWidth<760)rg.style.gridTemplateColumns="1fr";
