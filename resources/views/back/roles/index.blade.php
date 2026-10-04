@@ -4,23 +4,20 @@
 
 @section('content')
 <section data-page="roles" class="stack">
-  <x-page-header title="Rôles et permissions">
-    <button class="btn btn-primary" type="button">+ Nouveau rôle</button>
-  </x-page-header>
+  <x-page-header title="Rôles et permissions" />
   <div class="grid" style="grid-template-columns:minmax(220px,280px) minmax(0,1fr)" id="rolesGrid">
     <div class="card card-b role-list stack" style="gap:2px">
-      <a href="{{ route('admin.roles.index') }}"><span><strong>Administrateur</strong><br><span class="hint">Accès complet</span></span><span class="mono muted">4</span></a>
-      <a href="{{ route('admin.roles.index') }}" class="on"><span><strong>Gestionnaire réseau</strong><br><span class="hint">Municipalités, régies</span></span><span class="mono muted">38</span></a>
-      <a href="{{ route('admin.roles.index') }}"><span><strong>Technicien terrain</strong><br><span class="hint">Interventions</span></span><span class="mono muted">64</span></a>
-      <a href="{{ route('admin.roles.index') }}"><span><strong>Citoyen</strong><br><span class="hint">Espace public</span></span><span class="mono muted">4 112</span></a>
+      @foreach ($roles as ['role' => $role, 'count' => $count])
+      <a href="{{ route('admin.users.index', ['role' => $role->value]) }}" @class(['on' => $role === \App\Enums\Role::Gestionnaire]) title="Voir les utilisateurs « {{ $role->label() }} »"><span><strong>{{ $role->label() }}</strong><br><span class="hint">{{ $role->description() }}</span></span><span class="mono muted">{{ number_format($count, 0, ',', ' ') }}</span></a>
+      @endforeach
     </div>
-    <form class="card" method="POST" action="{{ route('admin.roles.update', 2) }}">
-      @csrf
-      @method('PUT')
-      <div class="card-h"><h2>Permissions · Gestionnaire réseau</h2><button class="btn btn-primary btn-sm" type="submit">Enregistrer</button></div>
-      {{-- Cases générées par back.js : name="permissions[Module][]" --}}
-      <div class="table-wrap"><table class="matrix" style="min-width:560px"><thead><tr><th>Module</th><th>Voir</th><th>Créer</th><th>Modifier</th><th>Supprimer</th></tr></thead><tbody id="matrix"></tbody></table></div>
-    </form>
+    <div class="card">
+      <div class="card-h"><h2>Permissions · Gestionnaire réseau</h2><x-status-badge value="Lecture seule" variant="b-mute" /></div>
+      {{-- Cases générées par back.js (name="permissions[Module][]") ; matrice d'exemple non modifiable --}}
+      <fieldset disabled style="border:0;margin:0;padding:0;min-width:0">
+        <div class="table-wrap"><table class="matrix" style="min-width:560px"><thead><tr><th>Module</th><th>Voir</th><th>Créer</th><th>Modifier</th><th>Supprimer</th></tr></thead><tbody id="matrix"></tbody></table></div>
+      </fieldset>
+    </div>
   </div>
 </section>
 @endsection
