@@ -16,13 +16,16 @@
     <a class="btn btn-ghost btn-sm" href="{{ route('login') }}" id="guestBtn">Connexion</a>
     @else
     <div class="user-menu">
-      <button class="avatar" id="avatarBtn" aria-haspopup="true" aria-expanded="false">SB</button>
+      <button class="avatar" id="avatarBtn" aria-haspopup="true" aria-expanded="false">{{ auth()->user()->initials() }}</button>
       <div class="dropdown" id="userDrop" hidden>
-        <div style="padding:10px 12px"><strong>Sana Ben Ali</strong><div class="muted" style="font-size:.82rem">Citoyenne · Ariana</div></div>
+        <div style="padding:10px 12px"><strong>{{ auth()->user()->name }}</strong><div class="muted" style="font-size:.82rem">{{ auth()->user()->role->label() }}@if (auth()->user()->organization) · {{ auth()->user()->organization }}@endif</div></div>
         <hr>
         <a href="{{ route('profile.edit') }}">Mon profil</a>
         <a href="{{ route('profile.edit') }}">Mes signalements</a>
         <a href="{{ route('profile.edit') }}">Mes contributions</a>
+        @if (auth()->user()->isStaff())
+        <a href="{{ route('admin.dashboard') }}">Console de gestion</a>
+        @endif
         <hr>
         <form method="POST" action="{{ route('logout') }}">
           @csrf

@@ -9,12 +9,12 @@
     <form class="card" method="POST" action="{{ route('admin.profile.update') }}" novalidate>
       @csrf
       @method('PUT')
-      <div class="fsec"><div class="row"><span class="av" style="background:var(--navy-2);width:64px;height:64px;font-size:1.3rem">KT</span><div><h2>Karim Trabelsi</h2><span class="muted">Administrateur · Régie des eaux d'Ariana</span></div><button class="btn btn-ghost btn-sm" type="button" style="margin-left:auto">Changer la photo</button></div>
+      <div class="fsec"><div class="row"><span class="av" style="background:{{ $user->role->color() }};width:64px;height:64px;font-size:1.3rem">{{ $user->initials() }}</span><div><h2>{{ $user->name }}</h2><span class="muted">{{ $user->role->label() }}@if ($user->organization) · {{ $user->organization }}@endif</span></div></div>
       <div class="fgrid">
-        <x-form.input name="first_name" label="Prénom" value="Karim" />
-        <x-form.input name="last_name" label="Nom" value="Trabelsi" />
-        <x-form.input name="email" label="E-mail" type="email" value="k.trabelsi@regie-ariana.tn" />
-        <x-form.input name="phone" label="Téléphone" type="tel" value="71 234 567" />
+        <x-form.input name="name" label="Nom complet" :value="$user->name" autocomplete="name" />
+        <x-form.input name="email" label="E-mail" type="email" :value="$user->email" autocomplete="email" />
+        <x-form.input name="phone" label="Téléphone" type="tel" :value="$user->phone" />
+        <x-form.input name="address" label="Adresse" :value="$user->address" />
       </div>
       <div class="row" style="justify-content:flex-end"><button class="btn btn-primary" type="submit">Enregistrer</button></div></div>
     </form>
@@ -22,9 +22,9 @@
       @csrf
       @method('PUT')
       <div class="fsec"><h2>Mot de passe</h2>
-        <x-form.input name="current_password" label="Mot de passe actuel" type="password" />
-        <x-form.input name="password" label="Nouveau mot de passe" type="password" />
-        <x-form.input name="password_confirmation" label="Confirmation" type="password" />
+        <x-form.input name="current_password" label="Mot de passe actuel" type="password" autocomplete="current-password" />
+        <x-form.input name="password" label="Nouveau mot de passe" type="password" autocomplete="new-password" hint="8 caractères min., une majuscule, une minuscule, un chiffre." />
+        <x-form.input name="password_confirmation" label="Confirmation" type="password" autocomplete="new-password" />
         <div class="row" style="justify-content:flex-end"><button class="btn btn-navy" type="submit">Modifier</button></div></div>
     </form>
   </div>

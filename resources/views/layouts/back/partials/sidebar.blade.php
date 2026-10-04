@@ -1,7 +1,7 @@
   <aside class="sidebar" id="sidebar">
     <a class="brand" href="{{ route('admin.dashboard') }}"><svg width="30" height="30" viewBox="0 0 32 32"><path d="M16 3C16 3 6 14.5 6 20.5a10 10 0 0 0 20 0C26 14.5 16 3 16 3Z" fill="#1CA7EC"/><path d="M11 21.5c1.8 1.6 3.4 1.6 5 0s3.2-1.6 5 0" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg><span>AquaSecure<small>CONSOLE DE GESTION</small></span></a>
     @php
-        // Menu de la console : [route, libellé, icône, compteur, motif routeIs pour le lien actif]
+        // Menu de la console : [route, libellé, icône, compteur, motif routeIs pour le lien actif, Gate requise]
         $icons = [
             'dash' => '<path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/>',
             'infra' => '<path d="M4 20V9l8-5 8 5v11"/><path d="M9 20v-6h6v6"/>',
@@ -29,8 +29,8 @@
                 ['admin.ai.insights', 'Analyses IA', 'ai', null, 'admin.ai.*'],
             ],
             'Administration' => [
-                ['admin.users.index', 'Utilisateurs', 'users', null, 'admin.users.*'],
-                ['admin.roles.index', 'Rôles et permissions', 'shield', null, 'admin.roles.*'],
+                ['admin.users.index', 'Utilisateurs', 'users', null, 'admin.users.*', 'manage-users'],
+                ['admin.roles.index', 'Rôles et permissions', 'shield', null, 'admin.roles.*', 'manage-users'],
                 ['admin.settings.edit', 'Paramètres', 'cog', null, 'admin.settings.*'],
             ],
         ];
@@ -38,11 +38,17 @@
     <nav class="side" id="side">
       @foreach ($menu as $group => $items)
       <div class="side-group"><div class="label">{{ $group }}</div>
-        @foreach ($items as [$route, $label, $icon, $count, $pattern])
+        @foreach ($items as $item)
+        @php([$route, $label, $icon, $count, $pattern] = $item)
+        @continue(isset($item[5]) && auth()->user()->cannot($item[5]))
         <a href="{{ route($route) }}" @class(['active' => request()->routeIs($pattern)])><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">{!! $icons[$icon] !!}</svg>{{ $label }}@if ($count)<span class="count">{{ $count }}</span>@endif</a>
         @endforeach
       </div>
       @endforeach
     </nav>
-    <div class="side-foot">Régie des eaux d'Ariana<br><span class="mono">v1.0 · Laravel 12</span></div>
+    @php($me = auth()->user())
+    <div class="side-foot">
+      <div class="row" style="flex-wrap:nowrap;gap:10px;margin-bottom:10px"><span class="av" style="background:{{ $me->role->color() }}">{{ $me->initials() }}</span><span style="line-height:1.25;min-width:0"><strong style="color:#fff;font-size:.84rem">{{ $me->name }}</strong><br>{{ $me->role->label() }}</span></div>
+      {{ $me->organization ?? 'AquaSecure' }}<br><span class="mono">v1.0 · Laravel 12</span>
+    </div>
   </aside>

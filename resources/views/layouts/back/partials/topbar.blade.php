@@ -11,9 +11,10 @@
             <div class="notif-item"><span class="badge b-warn dot"></span><div><strong>5 signalements groupés</strong> rue Ibn Sina<div class="muted">il y a 2 h</div></div></div>
           </div>
         </div>
-        <button class="me" id="meBtn" aria-haspopup="true"><span class="av" style="background:var(--navy-2)">KT</span><span class="who" style="text-align:left;line-height:1.2"><strong style="font-size:.86rem">Karim Trabelsi</strong><br><span class="muted" style="font-size:.76rem">Administrateur</span></span></button>
+        @php($me = auth()->user())
+        <button class="me" id="meBtn" aria-haspopup="true"><span class="av" style="background:{{ $me->role->color() }}">{{ $me->initials() }}</span><span class="who" style="text-align:left;line-height:1.2"><strong style="font-size:.86rem">{{ $me->name }}</strong><br><span class="muted" style="font-size:.76rem">{{ $me->role->label() }}</span></span></button>
         <div style="position:relative"><div class="dropdown" id="meDrop" hidden style="top:28px">
-          <a href="{{ route('admin.profile.edit') }}">Mon profil</a><a href="{{ route('admin.settings.edit') }}">Paramètres</a>
+          <a href="{{ route('admin.profile.edit') }}">Mon profil</a><a href="{{ route('admin.settings.edit') }}">Paramètres</a><a href="{{ route('home') }}">Espace citoyen</a>
           <form method="POST" action="{{ route('admin.logout') }}">
             @csrf
             <a href="{{ route('admin.logout') }}" onclick="event.preventDefault(); this.closest('form').submit();">Se déconnecter</a>

@@ -33,7 +33,6 @@ window.AQUA_ROUTES = {{ Js::from([
     'infra-form' => route('admin.infrastructures.create'),
     'projet-form' => route('admin.projects.create'),
     'financements' => route('admin.fundings.index'),
-    'user-form' => route('admin.users.create'),
 ]) }};
 </script>
 <script src="{{ asset('js/back.js') }}"></script>
