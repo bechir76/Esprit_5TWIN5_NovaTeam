@@ -19,7 +19,6 @@
           <x-form.input name="last_name" label="Nom" />
         </div>
         <x-form.input name="email" label="Adresse e-mail" type="email" />
-        <x-form.select name="commune" label="Commune" :options="['Ariana', 'Tunis', 'Ben Arous', 'La Manouba']" />
         <x-form.input name="password" label="Mot de passe" type="password" hint="8 caractères minimum, dont un chiffre et une majuscule." />
         <x-form.input name="password_confirmation" label="Confirmer le mot de passe" type="password" />
         <label class="check"><input type="checkbox" name="terms" value="1" @checked(old('terms'))> J'accepte les conditions d'utilisation</label>

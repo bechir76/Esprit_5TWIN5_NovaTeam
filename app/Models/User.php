@@ -3,14 +3,25 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\Role;
+use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    /** Organisations proposées dans le formulaire utilisateur (le personnel y est rattaché). */
+    public const ORGANIZATIONS = [
+        'Régie des eaux d\'Ariana',
+        'Municipalité de Tunis',
+        'Municipalité de Ben Arous',
+    ];
 
     /**
      * The attributes that are mass assignable.
@@ -21,6 +32,11 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
+        'phone',
+        'organization',
+        'address',
+        'is_active',
     ];
 
     /**
@@ -34,6 +50,16 @@ class User extends Authenticatable
     ];
 
     /**
+     * Valeurs par défaut, identiques à celles de la migration.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'role' => 'citoyen',
+        'is_active' => true,
+    ];
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -43,6 +69,34 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'role' => Role::class,
+            'is_active' => 'boolean',
         ];
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === Role::Admin;
+    }
+
+    /** Personnel du back office : admin, gestionnaire ou technicien. */
+    public function isStaff(): bool
+    {
+        return $this->role->isStaff();
+    }
+
+    /** Initiales affichées dans les avatars (« Karim Trabelsi » → « KT »). */
+    public function initials(): string
+    {
+        return Str::of($this->name)->explode(' ')->filter()->take(2)
+            ->map(fn (string $word) => Str::upper(Str::substr($word, 0, 1)))->implode('');
+    }
+
+    /** Recherche sur le nom ou l'e-mail. */
+    public function scopeSearch(Builder $query, ?string $term): void
+    {
+        $query->when($term, fn (Builder $q) => $q->where(fn (Builder $q) => $q
+            ->where('name', 'like', "%{$term}%")
+            ->orWhere('email', 'like', "%{$term}%")));
     }
 }

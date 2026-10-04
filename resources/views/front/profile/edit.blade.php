@@ -8,7 +8,7 @@
     <div class="screen-head"><div class="stack" style="gap:8px"><span class="eyebrow">Espace citoyen</span><h2>Mon profil</h2></div></div>
     <div class="profile-layout">
       <aside class="card pad stack" style="gap:16px">
-        <div class="stack" style="align-items:center;text-align:center;gap:8px"><div class="big-avatar">SB</div><strong>Sana Ben Ali</strong><span class="muted" style="font-size:.85rem">Membre depuis février 2025</span></div>
+        <div class="stack" style="align-items:center;text-align:center;gap:8px"><div class="big-avatar">{{ $user->initials() }}</div><strong>{{ $user->name }}</strong><span class="muted" style="font-size:.85rem">Membre depuis {{ $user->created_at?->translatedFormat('F Y') }}</span></div>
         <nav class="side-menu stack" style="gap:2px">
           <a href="{{ route('profile.edit') }}" class="on">Informations personnelles</a><a href="{{ route('profile.edit') }}">Mot de passe</a><a href="{{ route('profile.edit') }}">Mes signalements</a><a href="{{ route('profile.edit') }}">Mes contributions</a><a href="{{ route('profile.edit') }}">Notifications</a>
         </nav>
@@ -19,12 +19,10 @@
           @method('PUT')
           <div class="row" style="justify-content:space-between"><h3>Informations personnelles</h3><button class="btn btn-ghost btn-sm" type="button">Changer la photo</button></div>
           <div class="grid g2" style="gap:14px">
-            <x-form.input name="first_name" label="Prénom" value="Sana" />
-            <x-form.input name="last_name" label="Nom" value="Ben Ali" />
-            <x-form.input name="email" label="E-mail" type="email" value="sana.benali@mail.tn" />
-            <x-form.input name="phone" label="Téléphone" type="tel" value="22 451 870" />
-            <x-form.input name="address" label="Adresse" value="12 rue Ibn Sina, Ariana" />
-            <x-form.select name="commune" label="Commune" value="Ariana" :options="['Ariana', 'Tunis']" />
+            <x-form.input name="name" label="Nom complet" :value="$user->name" autocomplete="name" />
+            <x-form.input name="email" label="E-mail" type="email" :value="$user->email" autocomplete="email" />
+            <x-form.input name="phone" label="Téléphone" type="tel" :value="$user->phone" />
+            <x-form.input name="address" label="Adresse" :value="$user->address" />
           </div>
           <div class="row" style="justify-content:flex-end"><button class="btn btn-primary" type="submit">Enregistrer</button></div>
         </form>
@@ -33,9 +31,9 @@
           @method('PUT')
           <h3>Changer le mot de passe</h3>
           <div class="grid g3" style="gap:14px">
-            <x-form.input name="current_password" label="Mot de passe actuel" type="password" />
-            <x-form.input name="password" label="Nouveau" type="password" />
-            <x-form.input name="password_confirmation" label="Confirmation" type="password" />
+            <x-form.input name="current_password" label="Mot de passe actuel" type="password" autocomplete="current-password" />
+            <x-form.input name="password" label="Nouveau" type="password" autocomplete="new-password" />
+            <x-form.input name="password_confirmation" label="Confirmation" type="password" autocomplete="new-password" />
           </div>
           <div class="row" style="justify-content:flex-end"><button class="btn btn-navy" type="submit">Mettre à jour</button></div>
         </form>
