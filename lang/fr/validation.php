@@ -3,18 +3,29 @@
 // Messages des règles utilisées par l'application ; les autres retombent sur l'anglais (APP_FALLBACK_LOCALE).
 return [
     'accepted' => 'Vous devez accepter :attribute.',
+    'before_or_equal' => 'Le champ :attribute doit être une date antérieure ou égale au :date.',
+    'between' => [
+        'numeric' => 'Le champ :attribute doit être compris entre :min et :max.',
+    ],
     'boolean' => 'Le champ :attribute doit être vrai ou faux.',
     'confirmed' => 'La confirmation du champ :attribute ne correspond pas.',
     'current_password' => 'Le mot de passe actuel est incorrect.',
+    'date' => 'Le champ :attribute doit être une date valide.',
     'email' => 'Le champ :attribute doit être une adresse e-mail valide.',
     'enum' => 'La valeur du champ :attribute est invalide.',
     'exists' => 'La valeur du champ :attribute est invalide.',
+    'gt' => [
+        'numeric' => 'Le champ :attribute doit être supérieur à :value.',
+    ],
     'in' => 'La valeur du champ :attribute est invalide.',
+    'integer' => 'Le champ :attribute doit être un nombre entier.',
     'lowercase' => 'Le champ :attribute doit être en minuscules.',
     'max' => [
+        'numeric' => 'Le champ :attribute ne doit pas dépasser :max.',
         'string' => 'Le champ :attribute ne doit pas dépasser :max caractères.',
     ],
     'min' => [
+        'numeric' => 'Le champ :attribute doit être au moins égal à :min.',
         'string' => 'Le champ :attribute doit contenir au moins :min caractères.',
     ],
     'password' => [
@@ -24,7 +35,10 @@ return [
         'symbols' => 'Le champ :attribute doit contenir au moins un symbole.',
         'uncompromised' => 'Ce :attribute est apparu dans une fuite de données. Choisissez-en un autre.',
     ],
+    'numeric' => 'Le champ :attribute doit être un nombre.',
+    'regex' => 'Le format du champ :attribute est invalide.',
     'required' => 'Le champ :attribute est obligatoire.',
+    'required_with' => 'Le champ :attribute est obligatoire quand :values est renseigné.',
     'string' => 'Le champ :attribute doit être une chaîne de caractères.',
     'unique' => 'Cette valeur de :attribute est déjà utilisée.',
 
@@ -40,6 +54,25 @@ return [
         'address' => 'adresse',
         'role' => 'rôle',
         'is_active' => 'compte actif',
+        // Module infrastructures (les FormRequest définissent aussi leurs attributs)
+        'municipality' => 'commune',
+        'governorate' => 'gouvernorat',
+        'population_served' => 'population desservie',
+        'code' => 'code ouvrage',
+        'type' => 'type',
+        'material' => 'matériau',
+        'capacity' => 'capacité',
+        'capacity_unit' => 'unité de capacité',
+        'commissioned_year' => 'année de mise en service',
+        'nominal_pressure' => 'pression nominale',
+        'last_inspection_at' => 'dernière inspection',
+        'zone_id' => 'zone',
+        'zone' => 'zone',
+        'latitude' => 'latitude',
+        'longitude' => 'longitude',
+        'description' => 'description',
+        'is_public' => 'visibilité publique',
+        'q' => 'recherche',
         'terms' => 'les conditions d\'utilisation',
     ],
 ];

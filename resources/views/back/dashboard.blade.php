@@ -11,7 +11,7 @@
   <div class="grid kpis">
     <x-kpi-card label="Incidents ouverts" value="27" delta="+4 vs semaine dernière" trend="up" :spark="[18, 20, 19, 23, 22, 25, 23, 27]" />
     <x-kpi-card label="Incidents critiques" value="3" delta="+2 depuis hier" trend="up" :spark="[1, 0, 1, 1, 2, 1, 1, 3]" color="var(--crit)" />
-    <x-kpi-card label="Ouvrages à risque" value="14" delta="−3 ce mois" trend="down" :spark="[19, 18, 18, 17, 16, 16, 15, 14]" color="var(--warn)" />
+    <x-kpi-card label="Ouvrages à risque" :value="$atRiskCount" :delta="'dont '.$criticalCount.' critique'.($criticalCount > 1 ? 's' : '')" color="var(--warn)" />
     <x-kpi-card label="Fonds collectés" value="518 900" delta="TND · +12 % ce mois" trend="down" :spark="[310, 340, 365, 390, 420, 455, 490, 519]" color="var(--teal)" />
     <x-kpi-card label="Utilisateurs inscrits" value="4 218" delta="+86 ce mois" trend="down" :spark="[3800, 3870, 3940, 4010, 4060, 4120, 4170, 4218]" />
   </div>

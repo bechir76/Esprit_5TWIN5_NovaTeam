@@ -4,6 +4,7 @@
         // Menu de la console : [route, libellé, icône, compteur, motif routeIs pour le lien actif, Gate requise]
         $icons = [
             'dash' => '<path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/>',
+            'zone' => '<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/>',
             'infra' => '<path d="M4 20V9l8-5 8 5v11"/><path d="M9 20v-6h6v6"/>',
             'inc' => '<path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/>',
             'tool' => '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4Z"/>',
@@ -17,6 +18,7 @@
         $menu = [
             'Pilotage' => [
                 ['admin.dashboard', 'Tableau de bord', 'dash', null, 'admin.dashboard'],
+                ['admin.zones.index', 'Zones', 'zone', null, 'admin.zones.*'],
                 ['admin.infrastructures.index', 'Infrastructures', 'infra', null, 'admin.infrastructures.*'],
                 ['admin.incidents.index', 'Incidents', 'inc', 7, 'admin.incidents.*'],
                 ['admin.interventions.index', 'Interventions', 'tool', null, 'admin.interventions.*'],
