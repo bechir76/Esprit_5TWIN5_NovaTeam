@@ -33,7 +33,7 @@
     <div class="stats">
       <div><strong class="mono">1 284</strong><span class="muted">incidents résolus en 2026</span></div>
       <div><strong class="mono">36</strong><span class="muted">projets de rénovation financés</span></div>
-      <div><strong class="mono">512</strong><span class="muted">infrastructures surveillées</span></div>
+      <div><strong class="mono">{{ number_format($infrastructureCount, 0, ',', ' ') }}</strong><span class="muted">infrastructures surveillées</span></div>
       <div><strong class="mono">18 h</strong><span class="muted">délai moyen d'intervention</span></div>
     </div>
 

@@ -32,34 +32,25 @@ fill("homeIncidents",incidents.slice(0,4).map(i=>`<div class="inc-item"><div cla
 fill("myReports",incidents.filter((_,k)=>[0,3,4].includes(k)).map(i=>`<div class="inc-item"><div class="inc-ic" style="background:${icon[i.type][1]}">${icon[i.type][0]}</div><div style="flex:1;min-width:0"><strong>${i.t}</strong><div class="muted mono" style="font-size:.8rem">${i.ref} · ${i.d}</div></div><span class="badge ${i.st[1]}">${i.st[0]}</span></div>`).join(""));
 fill("incTable",incidents.map(i=>`<tr><td class="mono" style="font-size:.85rem">${i.ref}</td><td><strong>${i.t}</strong></td><td>${icon[i.type][0]} ${i.type}</td><td>${i.zone}</td><td><span class="badge ${i.sev[1]}">${i.sev[0]}</span></td><td><span class="badge ${i.st[1]}">${i.st[0]}</span></td><td class="mono">${i.d}</td></tr>`).join(""));
 
-/* Carte schématique */
-const sites=[
- {x:180,y:150,s:"ok",n:"Réservoir Belvédère",t:"Réservoir · 12 000 m³",z:"Tunis Centre",i:"14/09/2026",l:"Niveau 78 %"},
- {x:420,y:110,s:"warn",n:"Station de pompage Ariana Nord",t:"Pompage · 3 pompes",z:"Ariana",i:"02/08/2026",l:"Pression 2,4 bar"},
- {x:640,y:180,s:"crit",n:"Réservoir de La Soukra",t:"Réservoir · 5 000 m³",z:"Ariana",i:"12/03/2026",l:"Manganèse 0,12 mg/L"},
- {x:300,y:330,s:"ok",n:"Station de traitement Ghdir El Golla",t:"Traitement · 4 m³/s",z:"La Manouba",i:"28/09/2026",l:"Chlore 0,42 mg/L"},
- {x:560,y:380,s:"warn",n:"Conduite DN 600 Ben Arous",t:"Conduite principale · 4,1 km",z:"Ben Arous",i:"19/07/2026",l:"Pertes 6 m³/h"},
- {x:760,y:430,s:"ok",n:"Réservoir Mégrine",t:"Réservoir · 8 000 m³",z:"Ben Arous",i:"01/09/2026",l:"Niveau 64 %"},
- {x:120,y:440,s:"crit",n:"Forage de Mornag F3",t:"Forage · 35 L/s",z:"Ben Arous",i:"21/09/2026",l:"Nitrate 62 mg/L"}
-];
-const col={ok:"var(--teal)",warn:"var(--warn)",crit:"var(--crit)"},lbl={ok:["Bon","b-ok"],warn:["À surveiller","b-warn"],crit:["Critique","b-crit"]};
+/* Carte schématique : infrastructures publiques envoyées par InfrastructureMapController (window.AQUA_SITES),
+   placées par projection linéaire de leurs coordonnées dans l'emprise window.AQUA_MAP_BOUNDS */
+const sites=window.AQUA_SITES||[],bounds=window.AQUA_MAP_BOUNDS||{lat:[36.70,36.95],lng:[10.05,10.35]};
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const project=(lat,lng)=>{const c=(v,a,b)=>Math.min(1,Math.max(0,(v-a)/(b-a)));return [40+c(lng,bounds.lng[0],bounds.lng[1])*820,40+(1-c(lat,bounds.lat[0],bounds.lat[1]))*480]};
+const mapLabel=(t,lat,lng)=>{const [x,y]=project(lat,lng);return `<text x="${x.toFixed(0)}" y="${y.toFixed(0)}" fill="var(--muted)" font-family="IBM Plex Mono,monospace" font-size="12" text-anchor="middle">${t}</text>`};
 let svg=`<rect width="900" height="560" fill="var(--surface-2)"/>
 <path d="M620 0 C700 60 820 70 900 50 L900 0Z" fill="var(--water-soft)"/>
 <path d="M0 260 C200 240 380 300 900 280" stroke="var(--line)" stroke-width="16" fill="none"/>
 <path d="M260 0 C280 200 240 400 300 560" stroke="var(--line)" stroke-width="12" fill="none"/>
 <path d="M600 0 C580 200 640 380 620 560" stroke="var(--line)" stroke-width="12" fill="none"/>
-<path d="M0 470 L900 420" stroke="var(--line)" stroke-width="10" fill="none"/>
-<g stroke="var(--water)" stroke-width="3" fill="none" opacity=".55" stroke-dasharray="2 0">
-<path d="M300 330 L180 150 L420 110 L640 180"/><path d="M300 330 L560 380 L760 430"/><path d="M300 330 L120 440"/></g>
-<text x="40" y="40" fill="var(--muted)" font-family="IBM Plex Mono,monospace" font-size="12">TUNIS</text>
-<text x="440" y="60" fill="var(--muted)" font-family="IBM Plex Mono,monospace" font-size="12">ARIANA</text>
-<text x="660" y="520" fill="var(--muted)" font-family="IBM Plex Mono,monospace" font-size="12">BEN AROUS</text>
-<text x="40" y="520" fill="var(--muted)" font-family="IBM Plex Mono,monospace" font-size="12">MORNAG</text>`;
-sites.forEach((s,k)=>{svg+=`<g class="marker" data-k="${k}" tabindex="0"><circle cx="${s.x}" cy="${s.y}" r="13" fill="${col[s.s]}" opacity=".22"/><circle cx="${s.x}" cy="${s.y}" r="7" fill="${col[s.s]}" stroke="#fff" stroke-width="2.5"/></g>`});
+<path d="M0 470 L900 420" stroke="var(--line)" stroke-width="10" fill="none"/>`
++mapLabel("TUNIS",36.790,10.160)+mapLabel("ARIANA",36.905,10.150)+mapLabel("BEN AROUS",36.735,10.200)+mapLabel("LA MANOUBA",36.835,10.080)+mapLabel("MORNAG",36.690,10.300);
+sites.forEach((s,k)=>{const [x,y]=project(s.lat,s.lng);svg+=`<g class="marker" data-k="${k}" tabindex="0" role="button" aria-label="${esc(s.name)}"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="13" fill="${esc(s.color)}" opacity=".22"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7" fill="${esc(s.color)}" stroke="#fff" stroke-width="2.5"/></g>`});
 fill("mapSvg",svg);
 const pop=$("mapPop");
-function showSite(k){const s=sites[k];if(!pop||!s)return;pop.innerHTML=`<div class="row" style="justify-content:space-between"><span class="badge ${lbl[s.s][1]}">${lbl[s.s][0]}</span><span class="muted mono" style="font-size:.75rem">${s.z}</span></div><h3>${s.n}</h3><div class="muted" style="font-size:.88rem">${s.t}</div><div class="budget-row"><span>Dernière inspection</span><span class="mono">${s.i}</span></div><div class="budget-row" style="border:0"><span>Mesure</span><span class="mono">${s.l}</span></div><a href="${url("signaler")}" class="btn btn-ghost btn-sm" style="justify-content:center">Signaler un problème ici</a>`}
-showSite(2);
+function showSite(k){const s=sites[k];if(!pop||!s)return;pop.innerHTML=`<div class="row" style="justify-content:space-between"><span class="badge ${esc(s.badge)}">${esc(s.statusLabel)}</span><span class="muted mono" style="font-size:.75rem">${esc(s.zone)}</span></div><h3>${esc(s.name)}</h3><div class="muted" style="font-size:.88rem">${esc(s.type)} · ${esc(s.capacity)}</div><div class="budget-row"><span>Dernière inspection</span><span class="mono">${esc(s.inspection)}</span></div><div class="budget-row" style="border:0"><span>Code ouvrage</span><span class="mono">${esc(s.code)}</span></div><a href="${url("signaler")}" class="btn btn-ghost btn-sm" style="justify-content:center">Signaler un problème ici</a>`}
+/* Fiche affichée par défaut : le premier ouvrage critique, sinon le premier */
+if(pop){if(sites.length){const c=sites.findIndex(s=>s.status==="critique");showSite(c<0?0:c)}else pop.innerHTML=`<h3>Aucun ouvrage</h3><div class="muted" style="font-size:.88rem">Aucune infrastructure publique ne correspond à ces filtres.</div>`}
 on("mapSvg","click",e=>{const g=e.target.closest(".marker");if(g)showSite(+g.dataset.k)});
 on("mapSvg","keydown",e=>{const g=e.target.closest(".marker");if(g&&e.key==="Enter")showSite(+g.dataset.k)});
 

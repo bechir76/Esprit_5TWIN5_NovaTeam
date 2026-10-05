@@ -30,7 +30,6 @@
 <script>
 window.AQUA_ROUTES = {{ Js::from([
     'incident' => route('admin.incidents.show', 1),
-    'infra-form' => route('admin.infrastructures.create'),
     'projet-form' => route('admin.projects.create'),
     'financements' => route('admin.fundings.index'),
 ]) }};

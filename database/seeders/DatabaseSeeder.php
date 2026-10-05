@@ -14,8 +14,11 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             UserSeeder::class,
-            // Les autres modules (infrastructures, incidents, projets…) ajoutent leurs seeders
-            // après UserSeeder : ils peuvent ainsi rattacher leurs données aux utilisateurs créés.
+            ZoneSeeder::class,
+            InfrastructureSeeder::class,
+            // Les autres modules (incidents, projets, qualité de l'eau…) ajoutent leurs seeders ici,
+            // après InfrastructureSeeder : ils peuvent ainsi rattacher leurs données aux utilisateurs
+            // et aux infrastructures créés (Infrastructure::inRandomOrder()->first(), etc.).
         ]);
     }
 }
