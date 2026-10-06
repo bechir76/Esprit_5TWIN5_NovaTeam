@@ -2,6 +2,25 @@
 
 @section('title', 'Accueil')
 
+@php
+    // Valeurs du gauge-card issues de la dernière analyse validée (BD) ou fallback statique
+    use App\Enums\WaterParameter;
+
+    $chlore = $latestMeasurements->get('chlore');
+    $ph     = $latestMeasurements->get('ph');
+    $turb   = $latestMeasurements->get('turbidite');
+
+    $fmtVal = function ($m, int $dec = 2) {
+        if (! $m) return '—';
+        return number_format((float) $m->value, $dec, ',', ' ');
+    };
+
+    $allCompliant = $latestAnalysis && $latestAnalysis->compliance_rate === 100;
+    $badgeColor   = $allCompliant ? 'rgba(46,196,182,.18)' : 'rgba(230,57,70,.18)';
+    $badgeText    = $allCompliant ? '#7BE8DC' : '#FF8A93';
+    $badgeLabel   = $allCompliant ? 'Conforme' : 'Non conforme';
+@endphp
+
 @section('content')
 <section data-page="accueil">
   <div class="hero">
@@ -16,19 +35,57 @@
           <a class="btn btn-outline-light" href="{{ route('map') }}">Voir la carte du réseau</a>
         </div>
       </div>
+
+      {{-- Gauge-card : données réelles si disponibles, sinon fallback --}}
       <div class="gauge-card" aria-label="Qualité de l'eau mesurée aujourd'hui">
         <div class="row" style="justify-content:space-between;margin-bottom:6px">
-          <strong>Qualité mesurée aujourd'hui</strong><x-status-badge value="Conforme" style="background:rgba(46,196,182,.18);color:#7BE8DC" />
+          <strong>Qualité mesurée aujourd'hui</strong>
+          <span class="badge" style="background:{{ $badgeColor }};color:{{ $badgeText }}">{{ $badgeLabel }}</span>
         </div>
-        <div class="muted" style="color:#9CBCD1;font-size:.82rem;margin-bottom:8px">Station de traitement Ghdir El Golla · relevé 08:30</div>
-        <div class="k"><span>Chlore résiduel</span><span class="v">0,42 mg/L</span></div>
-        <div class="k"><span>Turbidité</span><span class="v">0,6 NTU</span></div>
-        <div class="k"><span>pH</span><span class="v">7,4</span></div>
-        <div class="k"><span>Pression moyenne du réseau</span><span class="v">3,1 bar</span></div>
-        <div class="k"><span>Niveau des barrages</span><span class="v" style="color:#F4C18F">31 %</span></div>
+        @if ($latestAnalysis)
+        <div class="muted" style="color:#9CBCD1;font-size:.82rem;margin-bottom:8px">
+          {{ $latestAnalysis->infrastructure->name }} · relevé {{ $latestAnalysis->sampled_at->format('H:i') }}
+          @if ($latestAnalysis->sampling_point)
+            · {{ $latestAnalysis->sampling_point }}
+          @endif
+        </div>
+        @else
+        <div class="muted" style="color:#9CBCD1;font-size:.82rem;margin-bottom:8px">
+          Station de traitement Ghdir El Golla · relevé 08:30
+        </div>
+        @endif
+
+        <div class="k">
+          <span>Chlore résiduel</span>
+          <span class="v">{{ $chlore ? $fmtVal($chlore, 2).' mg/L' : '—' }}</span>
+        </div>
+        <div class="k">
+          <span>Turbidité</span>
+          <span class="v">{{ $turb ? $fmtVal($turb, 2).' NTU' : '—' }}</span>
+        </div>
+        <div class="k">
+          <span>pH</span>
+          <span class="v">{{ $ph ? $fmtVal($ph, 1) : '—' }}</span>
+        </div>
+        <div class="k">
+          <span>Pression moyenne du réseau</span>
+          <span class="v">3,1 bar</span>
+        </div>
+        <div class="k">
+          <span>Niveau des barrages</span>
+          <span class="v" style="color:#F4C18F">31 %</span>
+        </div>
+        @if ($latestAnalysis)
+        <div style="margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,.15)">
+          <a href="{{ route('water-quality') }}" style="font-size:.82rem;color:#7FD8FF;text-decoration:none">
+            Voir toutes les analyses →
+          </a>
+        </div>
+        @endif
       </div>
     </div>
   </div>
+
   <div class="wrap">
     <div class="stats">
       <div><strong class="mono">1 284</strong><span class="muted">incidents résolus en 2026</span></div>

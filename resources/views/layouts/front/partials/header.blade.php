@@ -8,6 +8,7 @@
     <nav class="nav" id="nav">
       <a href="{{ route('home') }}" @class(['active' => request()->routeIs('home')])>Accueil</a>
       <a href="{{ route('map') }}" @class(['active' => request()->routeIs('map')])>Carte du réseau</a>
+      <a href="{{ route('water-quality') }}" @class(['active' => request()->routeIs('water-quality')])>Qualité de l'eau</a>
       <a href="{{ route('incidents.create') }}" @class(['active' => request()->routeIs('incidents.create')])>Signaler un incident</a>
       <a href="{{ route('incidents.index') }}" @class(['active' => request()->routeIs('incidents.index')])>Incidents</a>
       <a href="{{ route('projects.index') }}" @class(['active' => request()->routeIs('projects.*')])>Projets</a>

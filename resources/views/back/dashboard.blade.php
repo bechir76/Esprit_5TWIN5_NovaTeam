@@ -7,7 +7,25 @@
   <x-page-header title="Tableau de bord">
     <div class="row"><select class="input" style="width:auto" aria-label="Période"><option>30 derniers jours</option><option>Trimestre</option><option>Année 2026</option></select><a class="btn btn-primary" href="{{ route('admin.infrastructures.create') }}">+ Nouvelle infrastructure</a></div>
   </x-page-header>
-  <div class="alert alert-crit"><strong>Alerte qualité :</strong> nitrate à 62 mg/L au forage de Mornag F3 (seuil 50 mg/L). Distribution suspendue depuis 07:40. <a href="{{ route('admin.incidents.show', 1) }}" style="margin-left:auto;font-weight:600">Voir l'incident</a></div>
+  @if (isset($lastNonCompliant) && $lastNonCompliant)
+  @php
+    $p = $worstMeasurement?->parameter instanceof \App\Enums\WaterParameter
+        ? $worstMeasurement->parameter
+        : ($worstMeasurement ? \App\Enums\WaterParameter::from($worstMeasurement->parameter) : null);
+    $val = $worstMeasurement ? rtrim(rtrim(number_format((float) $worstMeasurement->value, 4, ',', ''), '0'), ',') : null;
+  @endphp
+  <div class="alert alert-crit">
+    <strong>Alerte qualité&nbsp;:</strong>
+    @if ($p && $val)
+      {{ $p->label() }} à {{ $val }}{{ $p->unit() ? ' '.$p->unit() : '' }}
+      à {{ $lastNonCompliant->infrastructure->name }} (seuil&nbsp;: {{ $p->thresholdHint() }}).
+    @else
+      Analyse non conforme détectée à {{ $lastNonCompliant->infrastructure->name }}.
+    @endif
+    Relevé du {{ $lastNonCompliant->sampled_at->format('d/m/Y H:i') }}.
+    <a href="{{ route('admin.water-analyses.show', $lastNonCompliant) }}" style="margin-left:auto;font-weight:600;white-space:nowrap">Voir l'analyse</a>
+  </div>
+  @endif
   <div class="grid kpis">
     <x-kpi-card label="Incidents ouverts" value="27" delta="+4 vs semaine dernière" trend="up" :spark="[18, 20, 19, 23, 22, 25, 23, 27]" />
     <x-kpi-card label="Incidents critiques" value="3" delta="+2 depuis hier" trend="up" :spark="[1, 0, 1, 1, 2, 1, 1, 3]" color="var(--crit)" />

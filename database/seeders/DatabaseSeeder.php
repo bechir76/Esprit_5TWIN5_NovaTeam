@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             // Les autres modules (incidents, projets, qualité de l'eau…) ajoutent leurs seeders ici,
             // après InfrastructureSeeder : ils peuvent ainsi rattacher leurs données aux utilisateurs
             // et aux infrastructures créés (Infrastructure::inRandomOrder()->first(), etc.).
+            WaterAnalysisSeeder::class,
         ]);
     }
 }

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Ouvrage du réseau (réservoir, conduite, station, forage), rattaché à une zone.
@@ -19,7 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  *   public function incidents(): HasMany     { return $this->hasMany(Incident::class); }      // module incidents
  *   public function projects(): HasMany      { return $this->hasMany(Project::class); }       // module projets
- *   public function waterAnalyses(): HasMany { return $this->hasMany(WaterAnalysis::class); } // module qualité de l'eau
+ *   public function waterAnalyses(): HasMany { return $this->hasMany(WaterAnalysis::class); } // module qualité de l'eau ✓
  */
 class Infrastructure extends Model
 {
@@ -76,6 +77,12 @@ class Infrastructure extends Model
     public function zone(): BelongsTo
     {
         return $this->belongsTo(Zone::class);
+    }
+
+    /** @return HasMany<WaterAnalysis, $this> */
+    public function waterAnalyses(): HasMany
+    {
+        return $this->hasMany(WaterAnalysis::class);
     }
 
     /** Capacité lisible : « 5 000 m³ », « 4,1 km ». */
