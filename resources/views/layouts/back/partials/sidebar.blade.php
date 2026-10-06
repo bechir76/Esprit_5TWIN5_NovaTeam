@@ -6,6 +6,7 @@
             'dash' => '<path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/>',
             'zone' => '<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/>',
             'infra' => '<path d="M4 20V9l8-5 8 5v11"/><path d="M9 20v-6h6v6"/>',
+            'water' => '<path d="M12 2C12 2 5 10.5 5 15a7 7 0 0 0 14 0C19 10.5 12 2 12 2Z"/><path d="m9.5 14 1.5 1.5 3.5-4"/>',
             'inc' => '<path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/>',
             'tool' => '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4Z"/>',
             'proj' => '<path d="M3 7h18v13H3zM8 7V4h8v3"/>',
@@ -22,6 +23,7 @@
                 ['admin.infrastructures.index', 'Infrastructures', 'infra', null, 'admin.infrastructures.*'],
                 ['admin.incidents.index', 'Incidents', 'inc', 7, 'admin.incidents.*'],
                 ['admin.interventions.index', 'Interventions', 'tool', null, 'admin.interventions.*'],
+                ['admin.water-analyses.index', 'Qualité de l\'eau', 'water', null, 'admin.water-analyses.*|admin.measurements.*'],
             ],
             'Financement' => [
                 ['admin.projects.index', 'Projets de rénovation', 'proj', null, 'admin.projects.*'],
