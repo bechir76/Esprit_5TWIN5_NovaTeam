@@ -25,7 +25,23 @@
         </div>
         <div><span class="label">Description</span><p style="margin-top:6px;max-width:70ch">{{ $infrastructure->description ?: 'Aucune description.' }}</p></div>
       </div>
-      {{-- Les modules incidents, projets et qualité de l'eau ajouteront ici les éléments liés à l'ouvrage --}}
+      <div class="card">
+        <div class="card-h"><h2>Incidents liés</h2><a class="btn btn-primary btn-sm" href="{{ route('admin.incidents.create', ['infrastructure' => $infrastructure->id]) }}">+ Créer un incident</a></div>
+        <div class="table-wrap"><table><thead><tr><th>Incident</th><th>Type</th><th>Gravité</th><th>Statut</th><th>Signalé le</th></tr></thead><tbody>
+          @forelse ($infrastructure->incidents as $incident)
+          <tr>
+            <td><span class="sev-bar" style="background:{{ $incident->severity->color() }}"></span><span style="display:inline-block;vertical-align:middle"><a href="{{ route('admin.incidents.show', $incident) }}" style="font-weight:600;text-decoration:none">{{ $incident->title }}</a><br><span class="mono muted" style="font-size:.76rem">{{ $incident->reference }}</span></span></td>
+            <td>{{ $incident->type->icon() }} {{ $incident->type->label() }}</td>
+            <td><x-status-badge :value="$incident->severity->label()" :variant="$incident->severity->badge()" dot /></td>
+            <td><x-status-badge :value="$incident->status->label()" :variant="$incident->status->badge()" /></td>
+            <td class="mono">{{ $incident->created_at->format('d/m/Y') }}</td>
+          </tr>
+          @empty
+          <tr><td colspan="5" class="muted" style="text-align:center;padding:28px">Aucun incident signalé sur cet ouvrage.</td></tr>
+          @endforelse
+        </tbody></table></div>
+      </div>
+      {{-- Les modules projets et qualité de l'eau ajouteront ici les éléments liés à l'ouvrage --}}
       <div class="card"><div class="card-h"><h2>Historique</h2></div><div class="card-b timeline">
         @if ($infrastructure->last_inspection_at)
         <div class="tl done"><strong>Dernière inspection</strong> : état « {{ $infrastructure->status->label() }} »<div class="muted">{{ $infrastructure->last_inspection_at->format('d/m/Y') }}</div></div>

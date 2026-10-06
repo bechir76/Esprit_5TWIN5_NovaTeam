@@ -27,18 +27,25 @@
   </div>
   @endif
   <div class="grid kpis">
-    <x-kpi-card label="Incidents ouverts" value="27" delta="+4 vs semaine dernière" trend="up" :spark="[18, 20, 19, 23, 22, 25, 23, 27]" />
-    <x-kpi-card label="Incidents critiques" value="3" delta="+2 depuis hier" trend="up" :spark="[1, 0, 1, 1, 2, 1, 1, 3]" color="var(--crit)" />
+    <x-kpi-card label="Incidents ouverts" :value="$openIncidents" :delta="'+'.$newIncidentsThisWeek.' signalé'.($newIncidentsThisWeek > 1 ? 's' : '').' en 7 jours'" :trend="$newIncidentsThisWeek > 0 ? 'up' : null" :spark="$incidentSpark" />
+    <x-kpi-card label="Incidents critiques" :value="$criticalIncidents" :delta="'+'.$newCriticalToday.' depuis hier'" :trend="$newCriticalToday > 0 ? 'up' : null" :spark="$criticalSpark" color="var(--crit)" />
     <x-kpi-card label="Ouvrages à risque" :value="$atRiskCount" :delta="'dont '.$criticalCount.' critique'.($criticalCount > 1 ? 's' : '')" color="var(--warn)" />
     <x-kpi-card label="Fonds collectés" value="518 900" delta="TND · +12 % ce mois" trend="down" :spark="[310, 340, 365, 390, 420, 455, 490, 519]" color="var(--teal)" />
     <x-kpi-card label="Utilisateurs inscrits" value="4 218" delta="+86 ce mois" trend="down" :spark="[3800, 3870, 3940, 4010, 4060, 4120, 4170, 4218]" />
   </div>
   <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr))">
-    <div class="card"><div class="card-h"><h2>Incidents par mois</h2><div class="legend"><span><i style="background:var(--water)"></i>Signalés</span><span><i style="background:var(--teal)"></i>Résolus</span></div></div><div class="card-b"><svg class="chart" id="barChart" viewBox="0 0 560 240" width="100%" role="img" aria-label="Incidents signalés et résolus par mois"></svg></div></div>
-    <div class="card"><div class="card-h"><h2>Répartition par type</h2><span class="muted mono" style="font-size:.8rem">27 ouverts</span></div><div class="card-b donut-wrap"><svg width="170" height="170" viewBox="0 0 42 42" id="donut" role="img" aria-label="Répartition des incidents ouverts par type"></svg><ul id="donutLegend"></ul></div></div>
+    <div class="card"><div class="card-h"><h2>Incidents par mois</h2><div class="legend"><span><i style="background:var(--water)"></i>Signalés</span><span><i style="background:var(--teal)"></i>Résolus</span></div></div><div class="card-b"><svg class="chart" id="barChart" viewBox="0 0 560 240" width="100%" role="img" aria-label="Incidents signalés et résolus par mois" data-series="{{ json_encode($incidentsPerMonth) }}"></svg></div></div>
+    <div class="card"><div class="card-h"><h2>Répartition par type</h2><span class="muted mono" style="font-size:.8rem">{{ $openIncidents }} ouvert{{ $openIncidents > 1 ? 's' : '' }}</span></div><div class="card-b donut-wrap"><svg width="170" height="170" viewBox="0 0 42 42" id="donut" role="img" aria-label="Répartition des incidents ouverts par type" data-series="{{ json_encode($incidentsByType) }}"></svg><ul id="donutLegend"></ul></div></div>
   </div>
   <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr))">
-    <div class="card"><div class="card-h"><h2>Derniers incidents</h2><a href="{{ route('admin.incidents.index') }}" class="muted" style="font-size:.84rem">Tout voir</a></div><div class="table-wrap"><table style="min-width:520px"><tbody id="dashInc"></tbody></table></div></div>
+    <div class="card"><div class="card-h"><h2>Derniers incidents</h2><a href="{{ route('admin.incidents.index') }}" class="muted" style="font-size:.84rem">Tout voir</a></div><div class="table-wrap"><table style="min-width:520px"><tbody>
+      @php($cell = 'border-top:0;border-bottom:1px solid var(--line)')
+      @forelse ($latestIncidents as $incident)
+      <tr><td style="{{ $cell }}"><span class="sev-bar" style="background:{{ $incident->severity->color() }}"></span><span style="display:inline-block;vertical-align:middle"><a href="{{ route('admin.incidents.show', $incident) }}" style="font-weight:600;text-decoration:none">{{ $incident->title }}</a><br><span class="muted" style="font-size:.78rem">{{ $incident->infrastructure?->name ?? $incident->address }}</span></span></td><td style="{{ $cell }}"><x-status-badge :value="$incident->status->label()" :variant="$incident->status->badge()" /></td><td class="mono muted" style="{{ $cell }};font-size:.8rem;text-align:right">{{ $incident->created_at->format('d/m H:i') }}</td></tr>
+      @empty
+      <tr><td class="muted" style="{{ $cell }};text-align:center;padding:28px">Aucun incident signalé.</td></tr>
+      @endforelse
+    </tbody></table></div></div>
     <div class="card"><div class="card-h"><h2>Avancement des projets</h2><a href="{{ route('admin.projects.index') }}" class="muted" style="font-size:.84rem">Tout voir</a></div><div class="card-b stack" style="gap:16px" id="dashProj"></div></div>
   </div>
 </section>

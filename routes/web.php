@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Admin\AuthenticatedSessionController as AdminSessionController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\IncidentController;
 use App\Http\Controllers\Admin\InfrastructureController;
+use App\Http\Controllers\Admin\InterventionController;
 use App\Http\Controllers\Admin\MeasurementController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
@@ -13,6 +15,7 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\IncidentReportController;
 use App\Http\Controllers\InfrastructureMapController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\WaterQualityController;
@@ -35,9 +38,12 @@ Route::get('/carte', InfrastructureMapController::class)->name('map');
 // Module 4 : page publique qualité de l'eau
 Route::get('/qualite-eau', WaterQualityController::class)->name('water-quality');
 
-Route::view('/incidents', 'front.incidents.index')->name('incidents.index');
-Route::view('/incidents/signaler', 'front.incidents.create')->name('incidents.create');
-Route::post('/incidents', $stub('Signalement envoyé. Vous serez notifié de son traitement.'))->name('incidents.store');
+// Module 2 : suivi public des incidents ; le signalement est réservé aux utilisateurs connectés
+Route::get('/incidents', [IncidentReportController::class, 'index'])->name('incidents.index');
+Route::middleware('auth')->group(function () {
+    Route::get('/incidents/signaler', [IncidentReportController::class, 'create'])->name('incidents.create');
+    Route::post('/incidents', [IncidentReportController::class, 'store'])->name('incidents.store');
+});
 
 Route::view('/projets', 'front.projects.index')->name('projects.index');
 Route::view('/projets/{project}', 'front.projects.show')->name('projects.show');
@@ -88,12 +94,10 @@ Route::prefix('admin')->name('admin.')->group(function () use ($stub) {
         // Page index des mesures non conformes
         Route::get('/mesures', [MeasurementController::class, 'index'])->name('measurements.index');
 
-        Route::view('/incidents', 'back.incidents.index')->name('incidents.index');
-        Route::view('/incidents/{incident}', 'back.incidents.show')->name('incidents.show');
-        Route::put('/incidents/{incident}', $stub('Statut de l\'incident mis à jour.'))->name('incidents.update');
-        Route::delete('/incidents/{incident}', fn () => to_route('admin.incidents.index')->with('status', 'Incident supprimé.'))->name('incidents.destroy');
-
-        Route::view('/interventions', 'back.interventions.index')->name('interventions.index');
+        // Incidents et interventions (module 2) : le statut de l'incident se change depuis sa fiche
+        Route::patch('/incidents/{incident}/statut', [IncidentController::class, 'updateStatus'])->name('incidents.status');
+        Route::resource('incidents', IncidentController::class);
+        Route::resource('interventions', InterventionController::class);
 
         Route::view('/projets', 'back.projects.index')->name('projects.index');
         Route::view('/projets/creer', 'back.projects.create')->name('projects.create');

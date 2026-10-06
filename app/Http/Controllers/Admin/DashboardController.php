@@ -3,10 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\AnalysisStatus;
+use App\Enums\IncidentSeverity;
+use App\Enums\IncidentType;
 use App\Enums\InfrastructureStatus;
 use App\Http\Controllers\Controller;
+use App\Models\Incident;
 use App\Models\Infrastructure;
 use App\Models\WaterAnalysis;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 /** Tableau de bord de la console. */
@@ -33,6 +38,51 @@ class DashboardController extends Controller
             'criticalCount'     => Infrastructure::ofStatus(InfrastructureStatus::Critique)->count(),
             'lastNonCompliant'  => $lastNonCompliant,
             'worstMeasurement'  => $worstMeasurement,
-        ]);
+        ] + $this->incidentStats());
+    }
+
+    /**
+     * Indicateurs du module incidents : KPI, sparklines hebdomadaires, répartition par type
+     * (groupBy en base), signalés / résolus par mois et derniers incidents.
+     *
+     * @return array<string, mixed>
+     */
+    private function incidentStats(): array
+    {
+        // Sparklines : incidents signalés par semaine sur 8 semaines (toutes gravités, puis critiques)
+        $weeks = collect(range(7, 0))->map(fn (int $k) => now()->startOfWeek()->subWeeks($k));
+        $recent = Incident::where('created_at', '>=', $weeks->first())->get(['created_at', 'severity']);
+        $perWeek = fn ($incidents) => $weeks->map(fn (Carbon $start) => $incidents
+            ->filter(fn (Incident $i) => $i->created_at->between($start, $start->copy()->endOfWeek()))
+            ->count())->all();
+
+        // Répartition des incidents ouverts par type
+        $byType = Incident::open()->selectRaw('type, count(*) as total')->groupBy('type')->pluck('total', 'type');
+        $donut = collect(IncidentType::cases())
+            ->map(fn (IncidentType $type) => [$type->pluralLabel(), (int) ($byType[$type->value] ?? 0), $type->color()])
+            ->values()
+            ->all();
+
+        // Signalés et résolus par mois sur 6 mois
+        $months = collect(range(5, 0))->map(fn (int $k) => now()->startOfMonth()->subMonths($k));
+        $reported = Incident::where('created_at', '>=', $months->first())->pluck('created_at');
+        $resolved = Incident::where('resolved_at', '>=', $months->first())->pluck('resolved_at');
+        $countIn = fn ($dates, Carbon $month) => $dates->filter(fn ($d) => Carbon::make($d)->isSameMonth($month))->count();
+
+        return [
+            'openIncidents' => Incident::open()->count(),
+            'newIncidentsThisWeek' => Incident::where('created_at', '>=', now()->subWeek())->count(),
+            'criticalIncidents' => Incident::open()->ofSeverity(IncidentSeverity::Critique)->count(),
+            'newCriticalToday' => Incident::ofSeverity(IncidentSeverity::Critique)->where('created_at', '>=', now()->subDay())->count(),
+            'incidentSpark' => $perWeek($recent),
+            'criticalSpark' => $perWeek($recent->filter(fn (Incident $i) => $i->severity === IncidentSeverity::Critique)),
+            'incidentsByType' => $donut,
+            'incidentsPerMonth' => [
+                'labels' => $months->map(fn (Carbon $m) => Str::ucfirst(rtrim($m->translatedFormat('M'), '.')))->all(),
+                'reported' => $months->map(fn (Carbon $m) => $countIn($reported, $m))->all(),
+                'resolved' => $months->map(fn (Carbon $m) => $countIn($resolved, $m))->all(),
+            ],
+            'latestIncidents' => Incident::with('infrastructure')->latest()->limit(5)->get(),
+        ];
     }
 }

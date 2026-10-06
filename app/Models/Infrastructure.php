@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * Les autres modules référencent cette table avec une colonne infrastructure_id
  * (voir CLAUDE.md) et ajoutent ici leur relation hasMany, par exemple :
  *
- *   public function incidents(): HasMany     { return $this->hasMany(Incident::class); }      // module incidents
+ *   public function incidents(): HasMany     { return $this->hasMany(Incident::class); }      // module incidents ✓
  *   public function projects(): HasMany      { return $this->hasMany(Project::class); }       // module projets
  *   public function waterAnalyses(): HasMany { return $this->hasMany(WaterAnalysis::class); } // module qualité de l'eau ✓
  */
@@ -77,6 +77,12 @@ class Infrastructure extends Model
     public function zone(): BelongsTo
     {
         return $this->belongsTo(Zone::class);
+    }
+
+    /** @return HasMany<Incident, $this> */
+    public function incidents(): HasMany
+    {
+        return $this->hasMany(Incident::class);
     }
 
     /** @return HasMany<WaterAnalysis, $this> */

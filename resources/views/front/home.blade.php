@@ -88,7 +88,7 @@
 
   <div class="wrap">
     <div class="stats">
-      <div><strong class="mono">1 284</strong><span class="muted">incidents résolus en 2026</span></div>
+      <div><strong class="mono">{{ number_format($resolvedThisYear, 0, ',', ' ') }}</strong><span class="muted">incidents résolus en {{ now()->year }}</span></div>
       <div><strong class="mono">36</strong><span class="muted">projets de rénovation financés</span></div>
       <div><strong class="mono">{{ number_format($infrastructureCount, 0, ',', ' ') }}</strong><span class="muted">infrastructures surveillées</span></div>
       <div><strong class="mono">18 h</strong><span class="muted">délai moyen d'intervention</span></div>
@@ -106,7 +106,13 @@
       </div>
       <div class="card pad">
         <div class="row" style="justify-content:space-between;margin-bottom:6px"><h3>Derniers signalements</h3><a href="{{ route('incidents.index') }}" class="muted" style="font-size:.88rem">Tout voir</a></div>
-        <div id="homeIncidents"></div>
+        <div>
+          @forelse ($latestIncidents as $incident)
+          <div class="inc-item"><div class="inc-ic" style="background:{{ $incident->type->softColor() }}">{{ $incident->type->icon() }}</div><div style="flex:1;min-width:0"><strong>{{ $incident->title }}</strong><div class="muted" style="font-size:.85rem">{{ $incident->infrastructure?->zone->name ?? $incident->address }} · {{ $incident->created_at->diffForHumans() }}</div></div><span class="badge {{ $incident->status->badge() }}">{{ $incident->status->label() }}</span></div>
+          @empty
+          <p class="muted" style="padding:16px 0">Aucun signalement pour le moment.</p>
+          @endforelse
+        </div>
       </div>
     </div>
 

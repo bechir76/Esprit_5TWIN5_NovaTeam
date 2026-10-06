@@ -21,7 +21,7 @@
                 ['admin.dashboard', 'Tableau de bord', 'dash', null, 'admin.dashboard'],
                 ['admin.zones.index', 'Zones', 'zone', null, 'admin.zones.*'],
                 ['admin.infrastructures.index', 'Infrastructures', 'infra', null, 'admin.infrastructures.*'],
-                ['admin.incidents.index', 'Incidents', 'inc', 7, 'admin.incidents.*'],
+                ['admin.incidents.index', 'Incidents', 'inc', \App\Models\Incident::open()->count(), 'admin.incidents.*'],
                 ['admin.interventions.index', 'Interventions', 'tool', null, 'admin.interventions.*'],
                 ['admin.water-analyses.index', 'Qualité de l\'eau', 'water', null, 'admin.water-analyses.*|admin.measurements.*'],
             ],

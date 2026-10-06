@@ -11,47 +11,45 @@
         @csrf
         <div class="form-sec">
           <div class="sec-title"><span>1/4</span><h3>Nature de l'incident</h3></div>
-          <div class="field"><label>Type d'incident *</label>
+          <div @class(['field', 'is-invalid' => $errors->has('type')])><label>Type d'incident *</label>
             <div class="seg" role="radiogroup">
-              <input type="radio" name="type" id="t1" value="fuite" @checked(old('type', 'fuite') === 'fuite')><label for="t1">💧 Fuite</label>
-              <input type="radio" name="type" id="t2" value="contamination" @checked(old('type') === 'contamination')><label for="t2">⚠️ Contamination</label>
-              <input type="radio" name="type" id="t3" value="coupure" @checked(old('type') === 'coupure')><label for="t3">🚱 Coupure</label>
+              @foreach (\App\Enums\IncidentType::cases() as $k => $type)
+              <input type="radio" name="type" id="t{{ $k + 1 }}" value="{{ $type->value }}" @checked(old('type', \App\Enums\IncidentType::Fuite->value) === $type->value)><label for="t{{ $k + 1 }}">{{ $type->icon() }} {{ $type->label() }}</label>
+              @endforeach
             </div>
+            @error('type')<span class="error">{{ $message }}</span>@enderror
           </div>
-          <x-form.select name="severity" label="Niveau de gravité *" value="moyen" :options="[
-              'faible' => 'Faible : suintement, gêne mineure',
-              'moyen' => 'Moyen : écoulement visible, pression réduite',
-              'eleve' => 'Élevé : rue inondée, eau colorée ou odorante',
-              'critique' => 'Critique : risque sanitaire ou quartier entier privé d\'eau',
-          ]" />
-          <x-form.input name="title" label="Titre *" placeholder="Ex. : Fuite importante devant l'école Ibn Khaldoun" />
-          <x-form.textarea name="description" label="Description *" hint="Décrivez ce que vous voyez : couleur, odeur, débit, depuis quand." />
+          <x-form.select name="severity" label="Niveau de gravité *" :value="\App\Enums\IncidentSeverity::Moyenne->value" :options="collect(\App\Enums\IncidentSeverity::cases())->mapWithKeys(fn ($s) => [$s->value => $s->description()])->all()" />
+          <x-form.input name="title" label="Titre *" placeholder="Ex. : Fuite importante devant l'école Ibn Khaldoun" maxlength="120" />
+          <x-form.textarea name="description" label="Description *" hint="Décrivez ce que vous voyez : couleur, odeur, débit, depuis quand (30 caractères au moins)." />
         </div>
         <div class="form-sec">
           <div class="sec-title"><span>2/4</span><h3>Localisation</h3></div>
           <div class="grid g2" style="gap:14px">
             <x-form.input name="address" label="Adresse *" placeholder="Avenue Habib Bourguiba, Ariana" />
-            <x-form.select name="delegation" label="Délégation *" :options="['Ariana Ville', 'La Soukra', 'Raoued']" />
+            <x-form.select name="infrastructure_id" label="Ouvrage concerné (si connu)" :options="['' => 'Je ne sais pas'] + $infrastructures" />
           </div>
           <div class="mini-map" aria-label="Position du signalement">
             <svg viewBox="0 0 600 160" width="100%" height="100%" preserveAspectRatio="xMidYMid slice"><rect width="600" height="160" fill="var(--surface-2)"/><path d="M0 60 L600 90 M0 130 L600 110 M180 0 L220 160 M420 0 L390 160" stroke="var(--line)" stroke-width="10"/><path d="M0 60 L600 90" stroke="var(--water)" stroke-width="2" stroke-dasharray="6 6" opacity=".6"/><circle cx="300" cy="75" r="22" fill="var(--water)" opacity=".2"/><circle cx="300" cy="75" r="8" fill="var(--water)" stroke="#fff" stroke-width="3"/></svg>
           </div>
-          <button type="button" class="btn btn-ghost btn-sm" style="align-self:flex-start">📍 Utiliser ma position</button>
+          <div class="grid g2" style="gap:14px">
+            <x-form.input name="latitude" label="Latitude" inputmode="decimal" placeholder="36.8660" />
+            <x-form.input name="longitude" label="Longitude" inputmode="decimal" placeholder="10.1640" />
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" id="geoBtn" style="align-self:flex-start">📍 Utiliser ma position</button>
         </div>
         <div class="form-sec">
-          <div class="sec-title"><span>3/4</span><h3>Photos</h3></div>
-          <label class="drop" for="photos"><strong>Glissez vos photos ici</strong> ou cliquez pour parcourir<br><span style="font-size:.8rem">JPG ou PNG, 5 Mo maximum par photo, 4 photos au plus</span></label>
-          <input type="file" id="photos" name="photos[]" accept="image/*" multiple hidden>
-          <div class="thumbs"><div class="thumb"></div><div class="thumb" style="background:linear-gradient(135deg,#7AA6BE,#3B6E8B)"></div></div>
+          <div class="sec-title"><span>3/4</span><h3>Photo</h3></div>
+          <div @class(['field', 'is-invalid' => $errors->has('photo')])>
+            <label class="drop" for="photo"><strong>Ajoutez une photo</strong> en cliquant ici<br><span style="font-size:.8rem">JPG ou PNG, 5 Mo maximum</span><br><span class="mono" id="photoName" style="font-size:.8rem"></span></label>
+            <input type="file" id="photo" name="photo" accept="image/jpeg,image/png" hidden>
+            @error('photo')<span class="error">{{ $message }}</span>@enderror
+          </div>
         </div>
         <div class="form-sec">
           <div class="sec-title"><span>4/4</span><h3>Vos coordonnées</h3></div>
-          <div class="grid g2" style="gap:14px">
-            <x-form.input name="name" label="Nom complet *" />
-            <x-form.input name="phone" label="Téléphone" type="tel" />
-          </div>
-          <label class="check"><input type="checkbox" name="notify" value="1" @checked(old('notify', true))> Me notifier à chaque changement de statut</label>
-          <div class="row" style="justify-content:flex-end"><button type="submit" name="action" value="draft" class="btn btn-ghost">Enregistrer le brouillon</button><button class="btn btn-primary" type="submit" name="action" value="send">Envoyer le signalement</button></div>
+          <p class="muted" style="font-size:.9rem">Signalement envoyé au nom de <strong>{{ auth()->user()->name }}</strong> ({{ auth()->user()->email }}). Suivez son traitement depuis <a href="{{ route('profile.edit') }}">Mon profil</a> ; vos coordonnées ne sont jamais publiées.</p>
+          <div class="row" style="justify-content:flex-end"><button class="btn btn-primary" type="submit">Envoyer le signalement</button></div>
         </div>
       </form>
       <aside class="ai-panel" aria-live="polite">

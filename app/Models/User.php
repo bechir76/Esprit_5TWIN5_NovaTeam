@@ -7,6 +7,7 @@ use App\Enums\Role;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
@@ -72,6 +73,26 @@ class User extends Authenticatable
             'role' => Role::class,
             'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * Incidents signalés par l'utilisateur (« Mes signalements »).
+     *
+     * @return HasMany<Incident, $this>
+     */
+    public function reportedIncidents(): HasMany
+    {
+        return $this->hasMany(Incident::class);
+    }
+
+    /**
+     * Interventions assignées au technicien.
+     *
+     * @return HasMany<Intervention, $this>
+     */
+    public function interventions(): HasMany
+    {
+        return $this->hasMany(Intervention::class, 'technician_id');
     }
 
     public function isAdmin(): bool

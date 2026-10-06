@@ -63,7 +63,7 @@ class InfrastructureController extends Controller
 
     public function show(Infrastructure $infrastructure): View
     {
-        $infrastructure->load('zone');
+        $infrastructure->load(['zone', 'incidents' => fn ($q) => $q->latest()]);
 
         return view('back.infrastructures.show', compact('infrastructure'));
     }

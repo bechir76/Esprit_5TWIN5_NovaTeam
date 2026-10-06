@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Enums\AnalysisStatus;
+use App\Enums\IncidentStatus;
 use App\Enums\WaterParameter;
+use App\Models\Incident;
 use App\Models\Infrastructure;
 use App\Models\WaterAnalysis;
 use Illuminate\View\View;
@@ -29,10 +31,20 @@ class HomeController extends Controller
             )
             : collect();
 
+        // Derniers signalements publics (les incidents rejetés ne sont pas publiés)
+        $latestIncidents = Incident::query()
+            ->with('infrastructure.zone')
+            ->where('status', '!=', IncidentStatus::Rejete->value)
+            ->latest()
+            ->limit(4)
+            ->get();
+
         return view('front.home', [
             'infrastructureCount'  => Infrastructure::count(),
             'latestAnalysis'       => $latestAnalysis,
             'latestMeasurements'   => $latestMeasurements,
+            'latestIncidents'      => $latestIncidents,
+            'resolvedThisYear'     => Incident::ofStatus(IncidentStatus::Resolu)->whereYear('resolved_at', now()->year)->count(),
         ]);
     }
 }

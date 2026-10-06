@@ -38,8 +38,14 @@
           <div class="row" style="justify-content:flex-end"><button class="btn btn-navy" type="submit">Mettre à jour</button></div>
         </form>
         <div class="card pad">
-          <div class="row" style="justify-content:space-between;margin-bottom:8px"><h3>Mes signalements</h3><span class="muted mono" style="font-size:.85rem">4 au total</span></div>
-          <div id="myReports"></div>
+          <div class="row" style="justify-content:space-between;margin-bottom:8px"><h3>Mes signalements</h3><span class="muted mono" style="font-size:.85rem">{{ $reports->count() }} au total</span></div>
+          <div>
+            @forelse ($reports as $incident)
+            <div class="inc-item"><div class="inc-ic" style="background:{{ $incident->type->softColor() }}" title="{{ $incident->type->label() }}">{{ $incident->type->icon() }}</div><div style="flex:1;min-width:0"><strong>{{ $incident->title }}</strong><div class="muted mono" style="font-size:.8rem">{{ $incident->reference }} · {{ $incident->type->label() }} · {{ $incident->created_at->format('d/m/Y') }}</div></div><span class="badge {{ $incident->severity->badge() }}">{{ $incident->severity->label() }}</span><span class="badge {{ $incident->status->badge() }}">{{ $incident->status->label() }}</span></div>
+            @empty
+            <p class="muted" style="padding:16px 0">Vous n'avez encore signalé aucun incident. <a href="{{ route('incidents.create') }}">Signaler un incident</a></p>
+            @endforelse
+          </div>
         </div>
         <div class="grid g2">
           <div class="card pad"><h3 style="margin-bottom:10px">Mes contributions</h3>

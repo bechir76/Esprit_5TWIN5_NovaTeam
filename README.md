@@ -43,6 +43,9 @@ Le seeder crée aussi 20 citoyens et 2 comptes suspendus (adresses aléatoires),
 | `/admin/infrastructures` | Infrastructures : CRUD, recherche, filtres, pagination |
 | `/admin/analyses` | Qualité de l'eau : analyses, KPIs, filtres statut / zone / période |
 | `/admin/mesures` | Mesures non conformes : liste globale, filtres paramètre / zone |
+| `/incidents`, `/incidents/signaler` | Suivi public des incidents ; signalement (connecté) |
+| `/admin/incidents` | Incidents : CRUD, filtres, changement de statut |
+| `/admin/interventions` | Interventions : CRUD, filtres statut / date |
 | `/admin/utilisateurs` | Utilisateurs : recherche, filtres, création, modification, suspension, suppression (admin) |
 | `/admin/roles` | Rôles et nombre d'utilisateurs par rôle (admin) |
 | `/admin/profil` | Profil du personnel |
@@ -116,6 +119,57 @@ Module 4 « Qualité de l'eau » : analyses physico-chimiques et bactériologiqu
 **Données de test** : `WaterAnalysisSeeder` crée 4 analyses fixes (dont `FOR-BAR-003` nitrate à 62 mg/L non conforme) puis 3 à 5 analyses par infrastructure de type réservoir / traitement / forage, réparties sur 6 mois, prélevées par les techniciens existants.
 
 **Tests** : `tests/Feature/WaterAnalysisTest.php` (23 tests) et `tests/Feature/MeasurementTest.php` (18 tests).
+
+## Module Incidents
+
+Module 2 « Incidents et interventions » : signalements des citoyens et interventions des équipes terrain.
+
+**Entités** (relation 1-n) :
+
+- `Incident` (`incidents`) : référence auto-générée (`INC-2026-0001`), titre, description, type, gravité, statut, adresse, latitude / longitude, photo (`photo_path`), infrastructure liée (nullable, `nullOnDelete`), déclarant `user_id` (nullable, `nullOnDelete`), date de résolution `resolved_at`. `hasMany` interventions.
+- `Intervention` (`interventions`) : incident (`cascadeOnDelete`), intitulé, équipe (liste `Intervention::TEAMS`), technicien `technician_id` (nullable → `users`, `nullOnDelete`), date prévue, durée estimée (heures, décimal), statut, compte rendu, date de fin `completed_at`.
+- Relations ajoutées : `Infrastructure::incidents()`, `User::reportedIncidents()`, `User::interventions()` (technicien).
+- Enums avec `label()`, `badge()` et `options()` : `IncidentType` (fuite, contamination, coupure), `IncidentSeverity` (faible, moyenne, elevee, critique), `IncidentStatus` (signale, qualifie, en_intervention, resolu, rejete), `InterventionStatus` (planifiee, en_cours, terminee, annulee).
+- Scopes : `Incident::search`, `ofType`, `ofSeverity`, `ofStatus`, `open`, `inZone` (via l'infrastructure) ; `Intervention::search`, `ofStatus`, `scheduledOn`, `active`.
+
+**Règles de statut** (hooks des modèles, enregistrements en transaction) :
+
+- `resolved_at` est renseigné au passage à « Résolu » et effacé si l'incident est rouvert ; `completed_at` suit de même le statut « Terminée » (date saisie ou heure actuelle).
+- Une intervention « En cours » fait passer son incident « Signalé » ou « Qualifié » à « En intervention ».
+- Un incident ne peut pas être résolu ni rejeté tant qu'une intervention est planifiée ou en cours, ni revenir à « Signalé » / « Qualifié » pendant une intervention en cours. Une intervention planifiée ou en cours ne peut pas être rattachée à un incident clôturé.
+
+**Front office** :
+
+| URL | Écran |
+|---|---|
+| `/incidents` | Liste publique paginée : onglets par statut, recherche (référence, titre, description, adresse), filtres type / zone. Les incidents rejetés et l'identité des déclarants ne sont pas publiés |
+| `/incidents/signaler` | Formulaire de signalement (utilisateur connecté), photo facultative, « Utiliser ma position » |
+| `/profil` | « Mes signalements » : incidents de l'utilisateur connecté |
+| `/` | « Derniers signalements » et nombre d'incidents résolus dans l'année |
+
+**Back office** (personnel connecté) :
+
+| URL | Écran |
+|---|---|
+| `/admin/incidents` | Liste (`with(['infrastructure.zone', 'user'])`), recherche, filtres type / gravité / statut / zone / date, pagination |
+| `/admin/incidents/creer`, `/admin/incidents/{id}/modifier` | Formulaire (infrastructure « CODE · Nom », carte cliquable, photo à ajouter / remplacer / retirer) |
+| `/admin/incidents/{id}` | Fiche : détails, photo, interventions, historique, carte ; changement de statut (`PATCH /admin/incidents/{id}/statut`, route `admin.incidents.status`) |
+| `/admin/interventions` | Liste (`with(['incident.infrastructure', 'technician'])`), recherche, filtres statut / date, pagination |
+| `/admin/interventions/creer` | Planification depuis la liste (incidents ouverts) ou depuis la fiche d'un incident (`?incident=ID`, retour sur la fiche) |
+| `/admin/interventions/{id}`, `/admin/interventions/{id}/modifier` | Fiche et modification |
+
+Le tableau de bord (incidents ouverts, incidents critiques ouverts, signalés / résolus par mois, répartition des incidents ouverts par type, derniers incidents), le compteur du menu « Incidents » et la fiche d'une infrastructure (« Incidents liés ») utilisent les données réelles.
+
+**Validation** (messages en français) :
+
+- Signalement / incident : titre 10–120 caractères, description 30 caractères minimum, type et gravité parmi les enums, adresse obligatoire, infrastructure existante (publique côté citoyen), latitude / longitude valides et renseignées ensemble, photo JPG ou PNG de 5 Mo maximum.
+- Intervention : incident existant, intitulé, équipe de la liste, date prévue valide, durée de 0,5 à 72 h, technicien ayant le rôle `technicien`, statut valide, compte rendu obligatoire si « Terminée ».
+
+**Photos** : enregistrées avec `Storage` sur le disque `public`, dans `storage/app/public/incidents`. Lancer `php artisan storage:link` pour les afficher. La photo est supprimée quand elle est remplacée, retirée ou quand l'incident est supprimé.
+
+**Données de test** : `IncidentSeeder` crée 40 incidents : les 7 du template (`INC-2026-0918` fuite rue Ibn Sina, `INC-2026-0915` eau trouble au forage de Mornag F3…) et 33 incidents générés sur 6 mois, répartis sur les infrastructures et les citoyens existants (au moins 4 pour `citoyen@aquasecure.tn`). `InterventionSeeder` crée 1 à 3 interventions cohérentes avec le statut de chaque incident non « signalé », assignées aux techniciens actifs. `IncidentFactory` (états `reported()`, `qualified()`, `inProgress()`, `resolved()`, `rejected()`, `critical()`, `fuite()`, `contamination()`, `coupure()`, `withoutInfrastructure()`, `withoutCoordinates()`) et `InterventionFactory` (`planned()`, `inProgress()`, `done()`, `cancelled()`, `withoutTechnician()`) réutilisent les enregistrements existants avec `recycle()`.
+
+**Tests** : `tests/Feature/IncidentTest.php` (20 tests) et `tests/Feature/InterventionTest.php` (14 tests).
 
 ## Développement
 

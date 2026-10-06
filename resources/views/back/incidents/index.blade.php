@@ -2,15 +2,82 @@
 
 @section('title', 'Incidents')
 
+@php
+    // Icônes des actions (mêmes tracés que back.js)
+    $icon = fn (string $paths) => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'.$paths.'</svg>';
+    $eye = $icon('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>');
+    $edit = $icon('<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>');
+    $trash = $icon('<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>');
+@endphp
+
 @section('content')
 <section data-page="incidents" class="stack">
   <x-page-header title="Incidents">
-    <div class="row"><button class="btn btn-ghost" type="button">Vue carte</button><button class="btn btn-primary" type="button">+ Créer un incident</button></div>
+    <div class="row"><a class="btn btn-ghost" href="{{ route('admin.interventions.index') }}">Interventions</a><a class="btn btn-primary" href="{{ route('admin.incidents.create') }}">+ Créer un incident</a></div>
   </x-page-header>
   <div class="card">
-    <div class="filters"><input class="input grow" placeholder="Référence, adresse, déclarant…" aria-label="Rechercher"><select class="input" aria-label="Type"><option>Tous les types</option><option>Fuite</option><option>Contamination</option><option>Coupure</option></select><select class="input" aria-label="Gravité"><option>Toutes gravités</option><option>Critique</option><option>Élevée</option><option>Moyenne</option><option>Faible</option></select><select class="input" aria-label="Statut"><option>Tous les statuts</option><option>Signalé</option><option>Qualifié</option><option>En intervention</option><option>Résolu</option></select><input class="input" type="date" aria-label="Depuis" value="2026-09-01"></div>
-    <div class="table-wrap"><table><thead><tr><th>Incident</th><th>Type</th><th>Infrastructure liée</th><th>Gravité</th><th>Statut</th><th>Équipe</th><th>Date</th><th></th></tr></thead><tbody id="incTable"></tbody></table></div>
-    <div class="foot"><span class="muted">Affichage 1 à 7 sur 248</span><div class="pager"><a href="{{ route('admin.incidents.index') }}">‹</a><a class="on" href="{{ route('admin.incidents.index') }}">1</a><a href="{{ route('admin.incidents.index') }}">2</a><a href="{{ route('admin.incidents.index') }}">3</a><a href="{{ route('admin.incidents.index') }}">›</a></div></div>
+    <form class="filters" method="GET" action="{{ route('admin.incidents.index') }}">
+      <input class="input grow" type="search" name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Référence, titre, adresse…" aria-label="Rechercher">
+      <select class="input" name="type" aria-label="Type" onchange="this.form.submit()">
+        <option value="">Tous les types</option>
+        @foreach (\App\Enums\IncidentType::cases() as $type)
+        <option value="{{ $type->value }}" @selected(($filters['type'] ?? '') === $type->value)>{{ $type->label() }}</option>
+        @endforeach
+      </select>
+      <select class="input" name="severity" aria-label="Gravité" onchange="this.form.submit()">
+        <option value="">Toutes gravités</option>
+        @foreach (\App\Enums\IncidentSeverity::cases() as $severity)
+        <option value="{{ $severity->value }}" @selected(($filters['severity'] ?? '') === $severity->value)>{{ $severity->label() }}</option>
+        @endforeach
+      </select>
+      <select class="input" name="status" aria-label="Statut" onchange="this.form.submit()">
+        <option value="">Tous les statuts</option>
+        @foreach (\App\Enums\IncidentStatus::cases() as $status)
+        <option value="{{ $status->value }}" @selected(($filters['status'] ?? '') === $status->value)>{{ $status->label() }}</option>
+        @endforeach
+      </select>
+      <select class="input" name="zone" aria-label="Zone" onchange="this.form.submit()">
+        <option value="">Toutes les zones</option>
+        @foreach ($zones as $id => $name)
+        <option value="{{ $id }}" @selected((string) ($filters['zone'] ?? '') === (string) $id)>{{ $name }}</option>
+        @endforeach
+      </select>
+      <input class="input" type="date" name="depuis" value="{{ $filters['depuis'] ?? '' }}" aria-label="Depuis" onchange="this.form.submit()">
+      <button class="btn btn-ghost" type="submit">Filtrer</button>
+      @if (array_filter($filters))
+      <a class="btn btn-ghost" href="{{ route('admin.incidents.index') }}">Réinitialiser</a>
+      @endif
+    </form>
+    <div class="table-wrap"><table><thead><tr><th>Incident</th><th>Type</th><th>Infrastructure · Zone</th><th>Gravité</th><th>Statut</th><th>Déclarant</th><th>Date</th><th></th></tr></thead><tbody>
+      @forelse ($incidents as $incident)
+      <tr>
+        <td><span class="sev-bar" style="background:{{ $incident->severity->color() }}"></span><span style="display:inline-block;vertical-align:middle"><a href="{{ route('admin.incidents.show', $incident) }}" style="font-weight:600;text-decoration:none">{{ $incident->title }}</a><br><span class="mono muted" style="font-size:.76rem">{{ $incident->reference }}</span></span></td>
+        <td>{{ $incident->type->icon() }} {{ $incident->type->label() }}</td>
+        <td>
+          @if ($incident->infrastructure)
+          <a href="{{ route('admin.infrastructures.show', $incident->infrastructure) }}" style="color:inherit">{{ $incident->infrastructure->name }}</a><br><span class="muted" style="font-size:.78rem">{{ $incident->infrastructure->zone->name }}</span>
+          @else
+          <span class="muted">—</span><br><span class="muted" style="font-size:.78rem">{{ $incident->address }}</span>
+          @endif
+        </td>
+        <td><x-status-badge :value="$incident->severity->label()" :variant="$incident->severity->badge()" dot /></td>
+        <td><x-status-badge :value="$incident->status->label()" :variant="$incident->status->badge()" /></td>
+        <td class="muted">{{ $incident->user?->name ?? '—' }}</td>
+        <td class="mono" style="white-space:nowrap">{{ $incident->created_at->format('d/m H:i') }}</td>
+        <td><div class="acts">
+          <a class="act" href="{{ route('admin.incidents.show', $incident) }}" title="Voir">{!! $eye !!}</a>
+          <a class="act" href="{{ route('admin.incidents.edit', $incident) }}" title="Modifier">{!! $edit !!}</a>
+          <button class="act del" type="button" data-del="{{ $incident->reference }}" data-action="{{ route('admin.incidents.destroy', $incident) }}" title="Supprimer">{!! $trash !!}</button>
+        </div></td>
+      </tr>
+      @empty
+      <tr><td colspan="8" class="muted" style="text-align:center;padding:28px">Aucun incident ne correspond à ces critères.</td></tr>
+      @endforelse
+    </tbody></table></div>
+    <div class="foot">
+      <span class="muted">@if ($incidents->total())Affichage {{ $incidents->firstItem() }} à {{ $incidents->lastItem() }} sur {{ $incidents->total() }}@else Aucun résultat @endif</span>
+      {{ $incidents->onEachSide(1)->links('back.partials.pagination') }}
+    </div>
   </div>
 </section>
 @endsection

@@ -16,8 +16,14 @@ class ProfileController extends Controller
 {
     public function edit(Request $request): View
     {
-        return view($request->routeIs('admin.*') ? 'back.profile.edit' : 'front.profile.edit', [
+        if ($request->routeIs('admin.*')) {
+            return view('back.profile.edit', ['user' => $request->user()]);
+        }
+
+        // Espace citoyen : « Mes signalements »
+        return view('front.profile.edit', [
             'user' => $request->user(),
+            'reports' => $request->user()->reportedIncidents()->latest()->get(),
         ]);
     }
 

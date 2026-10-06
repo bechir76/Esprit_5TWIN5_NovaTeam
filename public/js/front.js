@@ -7,15 +7,6 @@ const on=(id,ev,f)=>{const e=$(id);if(e)e.addEventListener(ev,f)};
 /* URL d'un écran : la vue peut définir window.AQUA_ROUTES = {projet: "{{ route('...') }}", ...}, sinon ancre */
 const url=p=>(window.AQUA_ROUTES||{})[p]||"#"+p;
 
-const incidents=[
- {ref:"INC-2026-0918",t:"Fuite importante rue Ibn Sina",type:"Fuite",zone:"Ariana",sev:["Élevée","b-crit"],st:["En cours","b-info"],d:"03/10/2026",ago:"il y a 2 h"},
- {ref:"INC-2026-0915",t:"Eau trouble et odeur de terre",type:"Contamination",zone:"Ben Arous",sev:["Critique","b-crit"],st:["Signalé","b-warn"],d:"03/10/2026",ago:"il y a 5 h"},
- {ref:"INC-2026-0907",t:"Coupure prolongée cité El Khadra",type:"Coupure",zone:"Tunis",sev:["Moyenne","b-warn"],st:["En cours","b-info"],d:"02/10/2026",ago:"hier"},
- {ref:"INC-2026-0899",t:"Suintement au pied du compteur",type:"Fuite",zone:"La Manouba",sev:["Faible","b-ok"],st:["Résolu","b-ok"],d:"01/10/2026",ago:"il y a 2 j"},
- {ref:"INC-2026-0884",t:"Pression très faible aux étages",type:"Coupure",zone:"Ariana",sev:["Moyenne","b-warn"],st:["Résolu","b-ok"],d:"29/09/2026",ago:"il y a 4 j"},
- {ref:"INC-2026-0871",t:"Conduite éclatée avenue de Carthage",type:"Fuite",zone:"Tunis",sev:["Critique","b-crit"],st:["Résolu","b-ok"],d:"27/09/2026",ago:"il y a 6 j"}
-];
-const icon={Fuite:["💧","var(--water-soft)"],Contamination:["⚠️","var(--crit-soft)"],Coupure:["🚱","var(--warn-soft)"]};
 const projects=[
  {n:"Réhabilitation du réservoir de La Soukra",tag:["Décontamination","b-warn"],g:"linear-gradient(135deg,#0E5A85,#2EC4B6)",c:168400,o:220000,days:58,d:"Fissures du radier et dépôts de manganèse sur un réservoir de 5 000 m³."},
  {n:"Remplacement de 2,4 km de conduites en fonte",tag:["Rénovation","b-info"],g:"linear-gradient(135deg,#0B3C5D,#1CA7EC)",c:96000,o:310000,days:112,d:"Conduites de 1962 responsables de 40 % des fuites du quartier Bab Saadoun."},
@@ -28,9 +19,6 @@ const fmt=n=>n.toLocaleString("fr-FR").replace(/ /g," ");
 const projCard=p=>{const pc=Math.round(p.c/p.o*100);return `<a class="card proj-card" href="${url("projet")}" style="text-decoration:none"><div class="proj-img" style="background:${p.g}"><span class="badge ${p.tag[1]}">${p.tag[0]}</span></div><div class="proj-body"><h3>${p.n}</h3><p class="muted" style="font-size:.9rem">${p.d}</p><div style="margin-top:auto" class="stack"><div class="progress"><span style="width:${pc}%"></span></div><div class="money"><span><strong class="mono">${fmt(p.c)}</strong> / <span class="mono">${fmt(p.o)} TND</span></span><span class="muted">${pc} % · ${p.days} j</span></div></div></div></a>`};
 fill("homeProjects",projects.slice(0,3).map(projCard).join(""));
 fill("allProjects",projects.map(projCard).join(""));
-fill("homeIncidents",incidents.slice(0,4).map(i=>`<div class="inc-item"><div class="inc-ic" style="background:${icon[i.type][1]}">${icon[i.type][0]}</div><div style="flex:1;min-width:0"><strong>${i.t}</strong><div class="muted" style="font-size:.85rem">${i.zone} · ${i.ago}</div></div><span class="badge ${i.st[1]}">${i.st[0]}</span></div>`).join(""));
-fill("myReports",incidents.filter((_,k)=>[0,3,4].includes(k)).map(i=>`<div class="inc-item"><div class="inc-ic" style="background:${icon[i.type][1]}">${icon[i.type][0]}</div><div style="flex:1;min-width:0"><strong>${i.t}</strong><div class="muted mono" style="font-size:.8rem">${i.ref} · ${i.d}</div></div><span class="badge ${i.st[1]}">${i.st[0]}</span></div>`).join(""));
-fill("incTable",incidents.map(i=>`<tr><td class="mono" style="font-size:.85rem">${i.ref}</td><td><strong>${i.t}</strong></td><td>${icon[i.type][0]} ${i.type}</td><td>${i.zone}</td><td><span class="badge ${i.sev[1]}">${i.sev[0]}</span></td><td><span class="badge ${i.st[1]}">${i.st[0]}</span></td><td class="mono">${i.d}</td></tr>`).join(""));
 
 /* Carte schématique : infrastructures publiques envoyées par InfrastructureMapController (window.AQUA_SITES),
    placées par projection linéaire de leurs coordonnées dans l'emprise window.AQUA_MAP_BOUNDS */
@@ -76,3 +64,7 @@ let w,h,t=0;function rs(){w=c.width=c.offsetWidth*devicePixelRatio;h=c.height=c.
 (function f(){x.clearRect(0,0,w,h);x.strokeStyle="rgba(127,216,255,.5)";x.lineWidth=1.2*devicePixelRatio;
 for(let i=0;i<9;i++){x.beginPath();for(let px=0;px<=w;px+=12){const y=h*(.15+i*.1)+Math.sin(px/140/devicePixelRatio+t+i*.7)*10*devicePixelRatio;px?x.lineTo(px,y):x.moveTo(px,y)}x.stroke()}
 t+=.012;requestAnimationFrame(f)})()})();
+/* Formulaire de signalement : « Utiliser ma position » remplit latitude / longitude, nom de la photo choisie */
+on("geoBtn","click",()=>{const la=$("latitude"),lo=$("longitude");if(!la||!lo||!navigator.geolocation){showToast("Géolocalisation indisponible sur cet appareil.");return}
+ navigator.geolocation.getCurrentPosition(p=>{la.value=p.coords.latitude.toFixed(6);lo.value=p.coords.longitude.toFixed(6);showToast("Position ajoutée au signalement.")},()=>showToast("Position non disponible : saisissez l'adresse."))});
+on("photo","change",e=>{const n=$("photoName"),f=e.target.files[0];if(n)n.textContent=f?f.name:""});
