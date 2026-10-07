@@ -89,7 +89,7 @@
   <div class="wrap">
     <div class="stats">
       <div><strong class="mono">{{ number_format($resolvedThisYear, 0, ',', ' ') }}</strong><span class="muted">incidents résolus en {{ now()->year }}</span></div>
-      <div><strong class="mono">36</strong><span class="muted">projets de rénovation financés</span></div>
+      <div><strong class="mono">{{ number_format($fundedProjectsCount, 0, ',', ' ') }}</strong><span class="muted">projets de rénovation financés</span></div>
       <div><strong class="mono">{{ number_format($infrastructureCount, 0, ',', ' ') }}</strong><span class="muted">infrastructures surveillées</span></div>
       <div><strong class="mono">18 h</strong><span class="muted">délai moyen d'intervention</span></div>
     </div>
@@ -118,7 +118,13 @@
 
     <div style="margin-top:64px">
       <div class="screen-head"><div class="stack" style="gap:8px"><span class="eyebrow">Financement participatif</span><h2>Projets en cours de financement</h2></div><a class="btn btn-ghost" href="{{ route('projects.index') }}">Tous les projets</a></div>
-      <div class="grid g3" id="homeProjects"></div>
+      <div class="grid g3" id="homeProjects">
+        @forelse ($homeProjects as $project)
+        <x-project-card :project="$project" />
+        @empty
+        <p class="muted">Aucun projet en cours de financement pour le moment.</p>
+        @endforelse
+      </div>
     </div>
   </div>
 </section>

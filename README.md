@@ -46,6 +46,8 @@ Le seeder crée aussi 20 citoyens et 2 comptes suspendus (adresses aléatoires),
 | `/incidents`, `/incidents/signaler` | Suivi public des incidents ; signalement (connecté) |
 | `/admin/incidents` | Incidents : CRUD, filtres, changement de statut |
 | `/admin/interventions` | Interventions : CRUD, filtres statut / date |
+| `/projets`, `/projets/{slug}` | Projets publics et fiche projet ; contribution citoyenne simulée (connecté) |
+| `/admin/projets`, `/admin/financements` | Projets de rénovation et financements : CRUD, filtres, KPIs |
 | `/admin/utilisateurs` | Utilisateurs : recherche, filtres, création, modification, suspension, suppression (admin) |
 | `/admin/roles` | Rôles et nombre d'utilisateurs par rôle (admin) |
 | `/admin/profil` | Profil du personnel |
@@ -170,6 +172,59 @@ Le tableau de bord (incidents ouverts, incidents critiques ouverts, signalés / 
 **Données de test** : `IncidentSeeder` crée 40 incidents : les 7 du template (`INC-2026-0918` fuite rue Ibn Sina, `INC-2026-0915` eau trouble au forage de Mornag F3…) et 33 incidents générés sur 6 mois, répartis sur les infrastructures et les citoyens existants (au moins 4 pour `citoyen@aquasecure.tn`). `InterventionSeeder` crée 1 à 3 interventions cohérentes avec le statut de chaque incident non « signalé », assignées aux techniciens actifs. `IncidentFactory` (états `reported()`, `qualified()`, `inProgress()`, `resolved()`, `rejected()`, `critical()`, `fuite()`, `contamination()`, `coupure()`, `withoutInfrastructure()`, `withoutCoordinates()`) et `InterventionFactory` (`planned()`, `inProgress()`, `done()`, `cancelled()`, `withoutTechnician()`) réutilisent les enregistrements existants avec `recycle()`.
 
 **Tests** : `tests/Feature/IncidentTest.php` (20 tests) et `tests/Feature/InterventionTest.php` (14 tests).
+
+## Module Projets et financements
+
+Module 3 « Projets de rénovation et financements » : projets de rénovation des ouvrages et leur financement participatif (municipalités, associations, entreprises, citoyens).
+
+**Entités** (relation 1-n) :
+
+- `Project` (`projects`) : titre, slug unique généré depuis le titre (suffixe `-2`, `-3`… en cas de doublon), catégorie, description, budget objectif (`target_budget`), dates de début et de fin de collecte, statut (défaut `brouillon`), image (`image_path`), publication (`is_public`), infrastructure liée (nullable, `nullOnDelete`). `hasMany` fundings.
+- `Funding` (`fundings`) : projet (`cascadeOnDelete`), source (`source_type`), financeur (`donor_name`), citoyen contributeur `user_id` (nullable, `nullOnDelete`), montant, date (`funded_at`), référence auto-générée (`FIN-2026-0001`), note.
+- Relations ajoutées : `Infrastructure::projects()`, `User::fundings()`.
+- Enums avec `label()`, `badge()` et `options()` : `ProjectCategory` (decontamination, renovation, surveillance, secheresse), `ProjectStatus` (brouillon, en_collecte, finance, en_travaux, termine), `FundingSource` (municipalite, association, entreprise, citoyen).
+- Accesseurs : `collected_amount` (agrégat `withSum('fundings', 'amount')` s'il est chargé), `progress_percent` (plafonné à 100), `days_left` (0 si la collecte est échue).
+- Scopes : `Project::search`, `ofStatus`, `ofCategory`, `open` (public et en collecte), `published` (public, hors brouillon), `inZone`, `orderByProgress` ; `Funding::search`, `ofSource`, `forProject`, `fundedBetween`.
+
+**Règles de gestion** :
+
+- Après chaque création, modification ou suppression d'un financement (hooks du modèle `Funding`), `Project::refreshStatus()` fait passer le projet de « En collecte » à « Financé » quand le total atteint le budget objectif, et de « Financé » à « En collecte » s'il repasse en dessous. Les statuts « Brouillon », « En travaux » et « Terminé » ne sont jamais modifiés automatiquement. Un financement déplacé vers un autre projet recalcule les deux projets.
+- Contribution citoyenne : utilisateur connecté, montant de 5 à 10 000 TND, projet public « En collecte » dont la date de fin n'est pas passée. Le contributeur (session), la source (`citoyen`), le nom (nom du compte) et la date (aujourd'hui) sont fixés côté serveur. **Le paiement est simulé** : aucun prestataire de paiement n'est appelé.
+- Seuls les projets publics hors brouillon sont visibles sur le site citoyen ; l'identité des citoyens contributeurs n'y est pas publiée.
+
+**Front office** :
+
+| URL | Écran |
+|---|---|
+| `/projets` | Projets publics paginés : filtre catégorie, tri « Plus urgents d'abord », « Presque financés », « Plus récents » (`withSum`, sans N+1) |
+| `/projets/{slug}` | Fiche : montant collecté, progression, jours restants, ouvrage et zone, répartition par source, avancement, derniers financements, formulaire de contribution |
+| `POST /projets/{slug}/contributions` | Contribution (route `projects.fundings.store`, connecté) |
+| `/profil` | « Mes contributions » : projet, référence, date, montant et total |
+| `/` | « Projets en cours de financement » et nombre de projets financés |
+
+**Back office** (personnel connecté) :
+
+| URL | Écran |
+|---|---|
+| `/admin/projets` | Liste (`with('infrastructure.zone')`, `withSum('fundings', 'amount')`), recherche, filtres statut / catégorie / zone, pagination |
+| `/admin/projets/creer`, `/admin/projets/{id}/modifier` | Formulaire partagé (infrastructure « CODE · Nom », image à ajouter / remplacer / retirer) |
+| `/admin/projets/{id}` | Fiche : détails, progression, montants par source, financements, « Ajouter un financement » |
+| `/admin/financements` | KPIs (total collecté, contributions, part municipale, projets financés à 100 %), liste (`with(['project', 'user'])`) filtrée par projet / source / période, progression par projet |
+| `/admin/financements/creer` | Saisie depuis la liste ou depuis la fiche d'un projet (`?projet=ID`, retour sur la fiche) |
+| `/admin/financements/{id}`, `/admin/financements/{id}/modifier` | Fiche et modification |
+
+Le tableau de bord (KPI « Fonds collectés » avec cumul sur 8 mois, bloc « Avancement des projets ») utilise les données réelles. Les composants Blade `<x-project-card>` (site citoyen) et `<x-project-progress>` (console) affichent les projets.
+
+**Validation** (messages en français) :
+
+- Projet : titre 5–150 caractères, catégorie et statut parmi les enums, description 20 caractères minimum, budget > 0, date de fin postérieure à la date de début, infrastructure existante, image JPG ou PNG de 2 Mo maximum.
+- Financement : projet existant, source valide, financeur obligatoire, montant > 0, date entre le début de la collecte du projet et aujourd'hui.
+
+**Images** : enregistrées sur le disque `public`, dans `storage/app/public/projects` (`php artisan storage:link`). L'image est supprimée quand elle est remplacée, retirée ou quand le projet est supprimé ; les financements du projet sont supprimés par la cascade.
+
+**Données de test** : `ProjectSeeder` crée 12 projets rattachés aux ouvrages du template (« Réhabilitation du réservoir de La Soukra », « Traitement du nitrate au forage de Mornag »…) avec des statuts variés et des dates relatives à aujourd'hui. `FundingSeeder` crée 5 à 25 financements par projet dont le total respecte le statut (brouillon très loin de l'objectif, en collecte entre 25 et 90 %, financé / en travaux / terminé à 100 % ou plus), répartis entre la municipalité de la zone, des associations, des entreprises et les citoyens existants (2 contributions pour `citoyen@aquasecure.tn`). `ProjectFactory` (états `draft()`, `collecting()`, `funded()`, `expired()`, `hidden()`, `withoutInfrastructure()`) et `FundingFactory` (`municipal()`, `association()`, `company()`, `fromCitizen()`).
+
+**Tests** : `tests/Feature/ProjectTest.php` (18 tests) et `tests/Feature/FundingTest.php` (20 tests).
 
 ## Développement
 

@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Enums\AnalysisStatus;
 use App\Enums\IncidentStatus;
+use App\Enums\ProjectStatus;
 use App\Enums\WaterParameter;
 use App\Models\Incident;
 use App\Models\Infrastructure;
+use App\Models\Project;
 use App\Models\WaterAnalysis;
 use Illuminate\View\View;
 
@@ -45,6 +47,9 @@ class HomeController extends Controller
             'latestMeasurements'   => $latestMeasurements,
             'latestIncidents'      => $latestIncidents,
             'resolvedThisYear'     => Incident::ofStatus(IncidentStatus::Resolu)->whereYear('resolved_at', now()->year)->count(),
+            // Module projets : collectes en cours (les plus proches de leur échéance) et projets financés
+            'homeProjects'         => Project::open()->whereDate('end_date', '>=', today())->with('infrastructure.zone')->withSum('fundings', 'amount')->orderBy('end_date')->limit(3)->get(),
+            'fundedProjectsCount'  => Project::ofStatus(ProjectStatus::fundedCases())->count(),
         ]);
     }
 }

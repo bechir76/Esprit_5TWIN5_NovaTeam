@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * (voir CLAUDE.md) et ajoutent ici leur relation hasMany, par exemple :
  *
  *   public function incidents(): HasMany     { return $this->hasMany(Incident::class); }      // module incidents ✓
- *   public function projects(): HasMany      { return $this->hasMany(Project::class); }       // module projets
+ *   public function projects(): HasMany      { return $this->hasMany(Project::class); }       // module projets ✓
  *   public function waterAnalyses(): HasMany { return $this->hasMany(WaterAnalysis::class); } // module qualité de l'eau ✓
  */
 class Infrastructure extends Model
@@ -89,6 +89,12 @@ class Infrastructure extends Model
     public function waterAnalyses(): HasMany
     {
         return $this->hasMany(WaterAnalysis::class);
+    }
+
+    /** @return HasMany<Project, $this> */
+    public function projects(): HasMany
+    {
+        return $this->hasMany(Project::class);
     }
 
     /** Capacité lisible : « 5 000 m³ », « 4,1 km ». */

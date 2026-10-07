@@ -49,9 +49,12 @@
         </div>
         <div class="grid g2">
           <div class="card pad"><h3 style="margin-bottom:10px">Mes contributions</h3>
-            <div class="budget-row"><span>Réservoir de La Soukra</span><span class="mono">50 TND</span></div>
-            <div class="budget-row"><span>Conduite Avenue de la Liberté</span><span class="mono">30 TND</span></div>
-            <div class="budget-row" style="border:0;font-weight:700"><span>Total</span><span class="mono">80 TND</span></div></div>
+            @forelse ($contributions as $funding)
+            <div class="budget-row"><span>@if ($funding->project->is_public && $funding->project->status !== \App\Enums\ProjectStatus::Brouillon)<a href="{{ route('projects.show', $funding->project) }}" style="color:inherit">{{ $funding->project->title }}</a>@else{{ $funding->project->title }}@endif<br><span class="muted mono" style="font-size:.76rem">{{ $funding->reference }} · {{ $funding->funded_at->format('d/m/Y') }}</span></span><span class="mono" style="white-space:nowrap">{{ \App\Models\Project::money($funding->amount) }} TND</span></div>
+            @empty
+            <p class="muted" style="padding:8px 0">Vous n'avez encore soutenu aucun projet. <a href="{{ route('projects.index') }}">Voir les projets</a></p>
+            @endforelse
+            <div class="budget-row" style="border:0;font-weight:700"><span>Total</span><span class="mono">{{ \App\Models\Project::money($contributions->sum('amount')) }} TND</span></div></div>
           <div class="card pad"><h3 style="margin-bottom:4px">Notifications</h3>
             <div class="pref"><span>Changement de statut de mes signalements</span><label class="toggle"><input type="checkbox" checked aria-label="Statut"><span></span></label></div>
             <div class="pref"><span>Coupures programmées dans ma commune</span><label class="toggle"><input type="checkbox" checked aria-label="Coupures"><span></span></label></div>

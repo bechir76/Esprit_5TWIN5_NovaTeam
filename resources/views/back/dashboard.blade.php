@@ -30,7 +30,7 @@
     <x-kpi-card label="Incidents ouverts" :value="$openIncidents" :delta="'+'.$newIncidentsThisWeek.' signalé'.($newIncidentsThisWeek > 1 ? 's' : '').' en 7 jours'" :trend="$newIncidentsThisWeek > 0 ? 'up' : null" :spark="$incidentSpark" />
     <x-kpi-card label="Incidents critiques" :value="$criticalIncidents" :delta="'+'.$newCriticalToday.' depuis hier'" :trend="$newCriticalToday > 0 ? 'up' : null" :spark="$criticalSpark" color="var(--crit)" />
     <x-kpi-card label="Ouvrages à risque" :value="$atRiskCount" :delta="'dont '.$criticalCount.' critique'.($criticalCount > 1 ? 's' : '')" color="var(--warn)" />
-    <x-kpi-card label="Fonds collectés" value="518 900" delta="TND · +12 % ce mois" trend="down" :spark="[310, 340, 365, 390, 420, 455, 490, 519]" color="var(--teal)" />
+    <x-kpi-card label="Fonds collectés" :value="\App\Models\Project::money(round($fundsCollected))" :delta="'TND · +'.\App\Models\Project::money(round($fundsThisMonth)).' ce mois'" trend="down" :spark="$fundsSpark" color="var(--teal)" />
     <x-kpi-card label="Utilisateurs inscrits" value="4 218" delta="+86 ce mois" trend="down" :spark="[3800, 3870, 3940, 4010, 4060, 4120, 4170, 4218]" />
   </div>
   <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr))">
@@ -46,7 +46,13 @@
       <tr><td class="muted" style="{{ $cell }};text-align:center;padding:28px">Aucun incident signalé.</td></tr>
       @endforelse
     </tbody></table></div></div>
-    <div class="card"><div class="card-h"><h2>Avancement des projets</h2><a href="{{ route('admin.projects.index') }}" class="muted" style="font-size:.84rem">Tout voir</a></div><div class="card-b stack" style="gap:16px" id="dashProj"></div></div>
+    <div class="card"><div class="card-h"><h2>Avancement des projets</h2><a href="{{ route('admin.projects.index') }}" class="muted" style="font-size:.84rem">Tout voir</a></div><div class="card-b stack" style="gap:16px" id="dashProj">
+      @forelse ($dashboardProjects as $project)
+      <x-project-progress :project="$project" />
+      @empty
+      <p class="muted">Aucun projet en cours.</p>
+      @endforelse
+    </div></div>
   </div>
 </section>
 @endsection
