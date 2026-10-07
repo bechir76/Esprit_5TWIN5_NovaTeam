@@ -22,6 +22,8 @@ class DatabaseSeeder extends Seeder
             IncidentSeeder::class,
             InterventionSeeder::class,
             WaterAnalysisSeeder::class,
+            ProjectSeeder::class,
+            FundingSeeder::class,
         ]);
     }
 }

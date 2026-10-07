@@ -95,6 +95,16 @@ class User extends Authenticatable
         return $this->hasMany(Intervention::class, 'technician_id');
     }
 
+    /**
+     * Contributions du citoyen aux projets (« Mes contributions »).
+     *
+     * @return HasMany<Funding, $this>
+     */
+    public function fundings(): HasMany
+    {
+        return $this->hasMany(Funding::class);
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === Role::Admin;

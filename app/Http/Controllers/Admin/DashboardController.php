@@ -6,9 +6,12 @@ use App\Enums\AnalysisStatus;
 use App\Enums\IncidentSeverity;
 use App\Enums\IncidentType;
 use App\Enums\InfrastructureStatus;
+use App\Enums\ProjectStatus;
 use App\Http\Controllers\Controller;
+use App\Models\Funding;
 use App\Models\Incident;
 use App\Models\Infrastructure;
+use App\Models\Project;
 use App\Models\WaterAnalysis;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -38,7 +41,7 @@ class DashboardController extends Controller
             'criticalCount'     => Infrastructure::ofStatus(InfrastructureStatus::Critique)->count(),
             'lastNonCompliant'  => $lastNonCompliant,
             'worstMeasurement'  => $worstMeasurement,
-        ] + $this->incidentStats());
+        ] + $this->incidentStats() + $this->projectStats());
     }
 
     /**
@@ -83,6 +86,38 @@ class DashboardController extends Controller
                 'resolved' => $months->map(fn (Carbon $m) => $countIn($resolved, $m))->all(),
             ],
             'latestIncidents' => Incident::with('infrastructure')->latest()->limit(5)->get(),
+        ];
+    }
+
+    /**
+     * Indicateurs du module projets : fonds collectés (total, mois en cours, cumul sur 8 mois)
+     * et avancement des projets en cours.
+     *
+     * @return array<string, mixed>
+     */
+    private function projectStats(): array
+    {
+        // Sparkline : total cumulé des financements à la fin de chacun des 8 derniers mois
+        $months = collect(range(7, 0))->map(fn (int $k) => now()->startOfMonth()->subMonths($k));
+        $cumulative = (float) Funding::whereDate('funded_at', '<', $months->first())->sum('amount');
+        $recent = Funding::whereDate('funded_at', '>=', $months->first())->get(['funded_at', 'amount']);
+        $spark = [];
+        foreach ($months as $month) {
+            $cumulative += (float) $recent->filter(fn (Funding $f) => $f->funded_at->isSameMonth($month))->sum('amount');
+            $spark[] = round($cumulative);
+        }
+
+        return [
+            'fundsCollected' => (float) Funding::sum('amount'),
+            'fundsThisMonth' => (float) Funding::whereDate('funded_at', '>=', now()->startOfMonth())->sum('amount'),
+            'fundsSpark' => $spark,
+            // Avancement des projets en collecte, financés ou en travaux, les plus avancés d'abord
+            'dashboardProjects' => Project::query()
+                ->ofStatus([ProjectStatus::EnCollecte, ProjectStatus::Finance, ProjectStatus::EnTravaux])
+                ->withSum('fundings', 'amount')
+                ->orderByProgress()
+                ->limit(4)
+                ->get(),
         ];
     }
 }

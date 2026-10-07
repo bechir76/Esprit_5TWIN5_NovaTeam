@@ -20,10 +20,11 @@ class ProfileController extends Controller
             return view('back.profile.edit', ['user' => $request->user()]);
         }
 
-        // Espace citoyen : « Mes signalements »
+        // Espace citoyen : « Mes signalements » et « Mes contributions »
         return view('front.profile.edit', [
             'user' => $request->user(),
             'reports' => $request->user()->reportedIncidents()->latest()->get(),
+            'contributions' => $request->user()->fundings()->with('project')->orderByDesc('funded_at')->orderByDesc('id')->get(),
         ]);
     }
 

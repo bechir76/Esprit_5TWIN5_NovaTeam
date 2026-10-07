@@ -2,10 +2,12 @@
 
 use App\Http\Controllers\Admin\AuthenticatedSessionController as AdminSessionController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\FundingController;
 use App\Http\Controllers\Admin\IncidentController;
 use App\Http\Controllers\Admin\InfrastructureController;
 use App\Http\Controllers\Admin\InterventionController;
 use App\Http\Controllers\Admin\MeasurementController;
+use App\Http\Controllers\Admin\ProjectController as AdminProjectController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\WaterAnalysisController;
@@ -18,6 +20,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\IncidentReportController;
 use App\Http\Controllers\InfrastructureMapController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\WaterQualityController;
 use Illuminate\Support\Facades\Route;
 
@@ -45,8 +48,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/incidents', [IncidentReportController::class, 'store'])->name('incidents.store');
 });
 
-Route::view('/projets', 'front.projects.index')->name('projects.index');
-Route::view('/projets/{project}', 'front.projects.show')->name('projects.show');
+// Module 3 : projets publics (URL par slug) ; la contribution est réservée aux utilisateurs connectés
+Route::get('/projets', [ProjectController::class, 'index'])->name('projects.index');
+Route::get('/projets/{project:slug}', [ProjectController::class, 'show'])->name('projects.show');
+Route::post('/projets/{project:slug}/contributions', [ProjectController::class, 'contribute'])
+    ->middleware('auth')
+    ->name('projects.fundings.store');
 
 // Authentification (module utilisateurs)
 Route::middleware('guest')->group(function () {
@@ -99,11 +106,14 @@ Route::prefix('admin')->name('admin.')->group(function () use ($stub) {
         Route::resource('incidents', IncidentController::class);
         Route::resource('interventions', InterventionController::class);
 
-        Route::view('/projets', 'back.projects.index')->name('projects.index');
-        Route::view('/projets/creer', 'back.projects.create')->name('projects.create');
-        Route::post('/projets', $stub('Projet enregistré.'))->name('projects.store');
+        // Projets de rénovation et financements (module 3) : URL /admin/projets et /admin/financements
+        Route::resource('projets', AdminProjectController::class)
+            ->parameters(['projets' => 'project'])
+            ->names('projects');
+        Route::resource('financements', FundingController::class)
+            ->parameters(['financements' => 'funding'])
+            ->names('fundings');
 
-        Route::view('/financements', 'back.fundings.index')->name('fundings.index');
         Route::view('/ia', 'back.ai.insights')->name('ai.insights');
 
         // Utilisateurs et rôles : administrateurs uniquement (Gate « manage-users »)

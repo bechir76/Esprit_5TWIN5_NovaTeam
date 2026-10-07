@@ -7,18 +7,7 @@ const on=(id,ev,f)=>{const e=$(id);if(e)e.addEventListener(ev,f)};
 /* URL d'un écran : la vue peut définir window.AQUA_ROUTES = {projet: "{{ route('...') }}", ...}, sinon ancre */
 const url=p=>(window.AQUA_ROUTES||{})[p]||"#"+p;
 
-const projects=[
- {n:"Réhabilitation du réservoir de La Soukra",tag:["Décontamination","b-warn"],g:"linear-gradient(135deg,#0E5A85,#2EC4B6)",c:168400,o:220000,days:58,d:"Fissures du radier et dépôts de manganèse sur un réservoir de 5 000 m³."},
- {n:"Remplacement de 2,4 km de conduites en fonte",tag:["Rénovation","b-info"],g:"linear-gradient(135deg,#0B3C5D,#1CA7EC)",c:96000,o:310000,days:112,d:"Conduites de 1962 responsables de 40 % des fuites du quartier Bab Saadoun."},
- {n:"Capteurs de qualité dans 12 écoles",tag:["Surveillance","b-ok"],g:"linear-gradient(135deg,#126D73,#7FD8C9)",c:41500,o:48000,days:21,d:"Mesure en continu du chlore et de la turbidité aux points d'eau scolaires."},
- {n:"Station de pompage solaire de Raoued",tag:["Sécheresse","b-warn"],g:"linear-gradient(135deg,#3A5F7D,#F4A261)",c:22000,o:180000,days:140,d:"Maintenir la pression en été malgré les délestages électriques."},
- {n:"Traitement du nitrate au forage de Mornag",tag:["Décontamination","b-crit"],g:"linear-gradient(135deg,#5B2333,#E63946)",c:133000,o:150000,days:9,d:"Taux de nitrate mesuré à 62 mg/L, au-dessus du seuil de 50 mg/L."},
- {n:"Sectorisation du réseau de Ben Arous",tag:["Rénovation","b-info"],g:"linear-gradient(135deg,#0F4C6E,#5CC8F0)",c:57000,o:95000,days:76,d:"Débitmètres de secteur pour localiser les fuites invisibles."}
-];
-const fmt=n=>n.toLocaleString("fr-FR").replace(/ /g," ");
-const projCard=p=>{const pc=Math.round(p.c/p.o*100);return `<a class="card proj-card" href="${url("projet")}" style="text-decoration:none"><div class="proj-img" style="background:${p.g}"><span class="badge ${p.tag[1]}">${p.tag[0]}</span></div><div class="proj-body"><h3>${p.n}</h3><p class="muted" style="font-size:.9rem">${p.d}</p><div style="margin-top:auto" class="stack"><div class="progress"><span style="width:${pc}%"></span></div><div class="money"><span><strong class="mono">${fmt(p.c)}</strong> / <span class="mono">${fmt(p.o)} TND</span></span><span class="muted">${pc} % · ${p.days} j</span></div></div></div></a>`};
-fill("homeProjects",projects.slice(0,3).map(projCard).join(""));
-fill("allProjects",projects.map(projCard).join(""));
+/* Les cartes projets (accueil, /projets) sont rendues par Blade (<x-project-card>) à partir de la base : plus de données de démonstration ici */
 
 /* Carte schématique : infrastructures publiques envoyées par InfrastructureMapController (window.AQUA_SITES),
    placées par projection linéaire de leurs coordonnées dans l'emprise window.AQUA_MAP_BOUNDS */
