@@ -1,0 +1,57 @@
+/* Console de gestion (layouts/back/app et back/auth) : thème commun + composants aux dimensions du back */
+@import './app.css';
+@import './legacy/back-modules.css';
+
+@layer base {
+    html, body {
+        @apply h-full;
+    }
+
+    body {
+        @apply text-sm leading-normal;
+    }
+
+    h1, h2, h3 {
+        @apply leading-[1.2];
+    }
+
+    h1 {
+        @apply text-[1.55rem] font-extrabold;
+    }
+
+    h2 {
+        @apply text-[1.1rem] font-bold;
+    }
+
+    h3 {
+        @apply text-[.98rem] font-bold;
+    }
+}
+
+@layer components {
+    .btn {
+        @apply inline-flex cursor-pointer items-center gap-[7px] rounded-lg border border-transparent px-[15px] py-[9px] font-body text-[.88rem] leading-[1.1] font-semibold whitespace-nowrap no-underline;
+    }
+
+    .btn-primary { @apply bg-water text-[#032A3F]; }
+    .btn-navy { @apply bg-navy text-white; }
+    .btn-ghost { @apply border-line bg-surface text-ink hover:bg-surface-2; }
+    .btn-danger { @apply bg-crit text-white; }
+    .btn-sm { @apply px-2.5 py-1.5 text-[.8rem]; }
+
+    .badge {
+        @apply inline-flex items-center gap-1.5 rounded-full px-[9px] py-[3px] text-[.72rem] font-semibold whitespace-nowrap;
+    }
+
+    .badge.dot {
+        @apply before:size-1.5 before:rounded-full before:bg-current before:content-[''];
+    }
+
+    .input {
+        @apply w-full rounded-lg border border-line bg-surface px-3 py-[9px] text-ink;
+    }
+
+    textarea.input {
+        @apply min-h-24 resize-y;
+    }
+}

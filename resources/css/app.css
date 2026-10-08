@@ -1,12 +1,147 @@
-@import 'tailwindcss';
+/*
+ * Thème Tailwind AquaSecure, commun au site citoyen (front.css) et à la console de gestion (back.css).
+ * Les couleurs sont des variables CSS : bg-navy, text-muted, border-line, bg-water-soft…
+ * Le mode sombre (préférence du système) redéfinit seulement ces variables.
+ */
+@import 'tailwindcss' source(none);
 
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
-@source "../**/*.blade.php";
-@source "../**/*.js";
-@source "../**/*.vue";
+@source '../views';
+@source '../js';
+@source '../../app/Enums';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --color-navy: #0B3C5D;
+    --color-navy-2: #0E4A72;
+    --color-water: #1CA7EC;
+    --color-teal: #2EC4B6;
+    --color-warn: #F4A261;
+    --color-crit: #E63946;
+    --color-bg: #F2F6FA;
+    --color-surface: #FFFFFF;
+    --color-surface-2: #EAF1F7;
+    --color-line: #D8E4EE;
+    --color-ink: #10283A;
+    --color-muted: #5D7689;
+    --color-hero: #0B3C5D;
+
+    --color-ok-soft: #DDF6F3;
+    --color-warn-soft: #FDEEDF;
+    --color-crit-soft: #FCE3E5;
+    --color-water-soft: #DDF1FC;
+
+    /* Texte des badges et alertes posés sur les fonds « soft » */
+    --color-ok-fg: #13877D;
+    --color-warn-fg: #B5631F;
+    --color-crit-fg: #C22834;
+    --color-info-fg: #0E7DB3;
+
+    --font-display: "Manrope", system-ui, sans-serif;
+    --font-body: "IBM Plex Sans", system-ui, sans-serif;
+    --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+    --radius-card: 10px;
+    --radius-panel: 14px;
+
+    --shadow-card: 0 1px 2px rgba(11, 60, 93, .06), 0 6px 18px rgba(11, 60, 93, .06);
+    --shadow-drop: 0 12px 30px rgba(11, 60, 93, .15);
+    --shadow-toast: 0 10px 26px rgba(11, 60, 93, .18);
+    --shadow-modal: 0 24px 60px rgba(0, 0, 0, .3);
+}
+
+@layer base {
+    /* Alias courts des couleurs du thème : utilisés par les enums (color(), softColor()) et les styles inline
+       des vues, ainsi que dans les SVG générés par le JS (var(--teal), var(--muted)…) */
+    :root {
+        --navy: var(--color-navy);
+        --navy-2: var(--color-navy-2);
+        --water: var(--color-water);
+        --teal: var(--color-teal);
+        --warn: var(--color-warn);
+        --crit: var(--color-crit);
+        --bg: var(--color-bg);
+        --surface: var(--color-surface);
+        --surface-2: var(--color-surface-2);
+        --line: var(--color-line);
+        --fg: var(--color-ink);
+        --muted: var(--color-muted);
+        --hero: var(--color-hero);
+        --ok-soft: var(--color-ok-soft);
+        --warn-soft: var(--color-warn-soft);
+        --crit-soft: var(--color-crit-soft);
+        --water-soft: var(--color-water-soft);
+        --ok-fg: var(--color-ok-fg);
+        --warn-fg: var(--color-warn-fg);
+        --crit-fg: var(--color-crit-fg);
+        --info-fg: var(--color-info-fg);
+        --f-display: var(--font-display);
+        --f-body: var(--font-body);
+        --f-mono: var(--font-mono);
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --color-bg: #08151E;
+            --color-surface: #0E202C;
+            --color-surface-2: #132C3B;
+            --color-line: #1E3A4C;
+            --color-ink: #E3EDF4;
+            --color-muted: #8EA7B9;
+            --color-hero: #0B2B42;
+            --color-ok-soft: #113A38;
+            --color-warn-soft: #3A2A1A;
+            --color-crit-soft: #3B1A1E;
+            --color-water-soft: #0F3348;
+            --color-ok-fg: #5FE0D2;
+            --color-warn-fg: #F6B983;
+            --color-crit-fg: #FF8A93;
+            --color-info-fg: #7FD3FA;
+            color-scheme: dark;
+        }
+    }
+
+    [x-cloak] {
+        display: none !important;
+    }
+
+    body {
+        @apply bg-bg font-body text-ink;
+    }
+
+    h1, h2, h3, h4 {
+        @apply font-display tracking-[-.01em];
+        text-wrap: balance;
+    }
+
+    button, [role="button"] {
+        cursor: pointer;
+    }
+
+    :focus-visible {
+        @apply outline-3 outline-offset-2 outline-water;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *, ::before, ::after {
+            transition: none !important;
+            animation: none !important;
+        }
+    }
+}
+
+/* Petites classes partagées, pour ne pas répéter de longues listes d'utilitaires */
+@layer components {
+    .card {
+        @apply rounded-card border border-line bg-surface;
+    }
+
+    .menu-item {
+        @apply block rounded-md px-3 py-[9px] text-left hover:bg-surface-2;
+    }
+
+    .b-ok { @apply bg-ok-soft text-ok-fg; }
+    .b-warn { @apply bg-warn-soft text-warn-fg; }
+    .b-crit { @apply bg-crit-soft text-crit-fg; }
+    .b-info { @apply bg-water-soft text-info-fg; }
+    .b-mute { @apply bg-surface-2 text-muted; }
 }

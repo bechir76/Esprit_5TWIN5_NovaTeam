@@ -1,0 +1,51 @@
+/* Site citoyen (layouts/front/app) : thème commun + composants aux dimensions du front */
+@import './app.css';
+@import './legacy/front-modules.css';
+
+@layer base {
+    body {
+        @apply text-[15px] leading-[1.55];
+    }
+
+    h1, h2, h3, h4 {
+        @apply leading-[1.15];
+    }
+
+    h1 {
+        @apply text-[clamp(2rem,4.6vw,3.3rem)] font-extrabold;
+    }
+
+    h2 {
+        @apply text-[clamp(1.5rem,2.6vw,2rem)] font-extrabold;
+    }
+
+    h3 {
+        @apply text-[1.1rem] font-bold;
+    }
+}
+
+@layer components {
+    .btn {
+        @apply inline-flex cursor-pointer items-center gap-2 rounded-[9px] border border-transparent px-[18px] py-[11px] font-body text-[.95rem] leading-none font-semibold no-underline;
+    }
+
+    .btn-primary { @apply bg-water text-[#032A3F] hover:brightness-107; }
+    .btn-navy { @apply bg-navy text-white; }
+    .btn-ghost { @apply border-line bg-transparent text-ink hover:bg-surface-2; }
+    .btn-light { @apply bg-white text-navy; }
+    .btn-outline-light { @apply border-white/40 bg-transparent text-white; }
+    .btn-sm { @apply px-3 py-[7px] text-[.85rem]; }
+
+    .badge {
+        @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap;
+        @apply before:size-[7px] before:rounded-full before:bg-current before:content-[''];
+    }
+
+    .input {
+        @apply w-full rounded-[9px] border border-line bg-surface px-[13px] py-[11px] text-ink;
+    }
+
+    textarea.input {
+        @apply min-h-[120px] resize-y;
+    }
+}

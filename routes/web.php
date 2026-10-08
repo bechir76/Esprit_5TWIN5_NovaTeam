@@ -12,10 +12,7 @@ use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\WaterAnalysisController;
 use App\Http\Controllers\Admin\ZoneController;
-use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\Auth\NewPasswordController;
-use App\Http\Controllers\Auth\PasswordResetLinkController;
-use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\IncidentReportController;
 use App\Http\Controllers\InfrastructureMapController;
@@ -55,25 +52,15 @@ Route::post('/projets/{project:slug}/contributions', [ProjectController::class, 
     ->middleware('auth')
     ->name('projects.fundings.store');
 
-// Authentification (module utilisateurs)
-Route::middleware('guest')->group(function () {
-    Route::get('/connexion', [AuthenticatedSessionController::class, 'create'])->name('login');
-    Route::post('/connexion', [AuthenticatedSessionController::class, 'store']);
-    Route::get('/inscription', [RegisteredUserController::class, 'create'])->name('register');
-    Route::post('/inscription', [RegisteredUserController::class, 'store']);
-    Route::get('/mot-de-passe-oublie', [PasswordResetLinkController::class, 'create'])->name('password.request');
-    Route::post('/mot-de-passe-oublie', [PasswordResetLinkController::class, 'store'])->name('password.email');
-    Route::get('/reinitialiser-mot-de-passe/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
-    Route::post('/reinitialiser-mot-de-passe', [NewPasswordController::class, 'store'])->name('password.store');
-});
-
+// Profil (Breeze) : partagé avec le back office, la vue dépend de la route
 Route::middleware('auth')->group(function () {
-    Route::post('/deconnexion', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
-
     Route::get('/profil', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profil', [ProfileController::class, 'update'])->name('profile.update');
-    Route::put('/profil/mot-de-passe', [ProfileController::class, 'updatePassword'])->name('password.update');
+    Route::delete('/profil', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+
+// Authentification Laravel Breeze : connexion, inscription, mot de passe, vérification de l'e-mail
+require __DIR__.'/auth.php';
 
 // ---------------------------------------------------------------- Back office
 
@@ -129,7 +116,7 @@ Route::prefix('admin')->name('admin.')->group(function () use ($stub) {
 
         Route::get('/profil', [ProfileController::class, 'edit'])->name('profile.edit');
         Route::put('/profil', [ProfileController::class, 'update'])->name('profile.update');
-        Route::put('/profil/mot-de-passe', [ProfileController::class, 'updatePassword'])->name('password.update');
+        Route::put('/profil/mot-de-passe', [PasswordController::class, 'update'])->name('password.update');
 
         Route::view('/parametres', 'back.settings.edit')->name('settings.edit');
         Route::put('/parametres', $stub('Seuils enregistrés.'))->name('settings.update');

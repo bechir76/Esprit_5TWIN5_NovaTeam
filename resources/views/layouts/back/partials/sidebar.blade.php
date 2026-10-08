@@ -1,5 +1,9 @@
-  <aside class="sidebar" id="sidebar">
-    <a class="brand" href="{{ route('admin.dashboard') }}"><svg width="30" height="30" viewBox="0 0 32 32"><path d="M16 3C16 3 6 14.5 6 20.5a10 10 0 0 0 20 0C26 14.5 16 3 16 3Z" fill="#1CA7EC"/><path d="M11 21.5c1.8 1.6 3.4 1.6 5 0s3.2-1.6 5 0" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg><span>AquaSecure<small>CONSOLE DE GESTION</small></span></a>
+  <aside class="fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col overflow-y-auto bg-navy px-3.5 py-[18px] text-[#BFD5E4] transition-transform duration-200 max-[980px]:-translate-x-full min-[981px]:sticky min-[981px]:top-0 min-[981px]:bottom-auto min-[981px]:h-screen min-[981px]:w-auto"
+         :class="{ 'max-[980px]:translate-x-0!': sidebar }">
+    <a class="flex items-center gap-2.5 px-2 pt-1 pb-[18px] font-display text-[1.1rem] font-extrabold text-white" href="{{ route('admin.dashboard') }}">
+      <svg class="flex-none" width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3C16 3 6 14.5 6 20.5a10 10 0 0 0 20 0C26 14.5 16 3 16 3Z" fill="#1CA7EC"/><path d="M11 21.5c1.8 1.6 3.4 1.6 5 0s3.2-1.6 5 0" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+      <span>AquaSecure<small class="block font-mono text-[.65rem] font-normal tracking-[.1em] text-[#7FB3D3]">CONSOLE DE GESTION</small></span>
+    </a>
     @php
         // Menu de la console : [route, libellé, icône, compteur, motif routeIs pour le lien actif, Gate requise]
         $icons = [
@@ -39,20 +43,27 @@
             ],
         ];
     @endphp
-    <nav class="side" id="side">
+    <nav>
       @foreach ($menu as $group => $items)
-      <div class="side-group"><div class="label">{{ $group }}</div>
+      <div class="mt-3.5">
+        <div class="px-2.5 pb-1.5 font-mono text-[.7rem] tracking-[.08em] text-[#6E9DBC] uppercase">{{ $group }}</div>
         @foreach ($items as $item)
         @php([$route, $label, $icon, $count, $pattern] = $item)
         @continue(isset($item[5]) && auth()->user()->cannot($item[5]))
-        <a href="{{ route($route) }}" @class(['active' => request()->routeIs($pattern)])><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">{!! $icons[$icon] !!}</svg>{{ $label }}@if ($count)<span class="count">{{ $count }}</span>@endif</a>
+        <a href="{{ route($route) }}" @class([
+            'flex items-center gap-[11px] rounded-lg px-2.5 py-[9px] text-[.9rem] font-medium hover:bg-white/6 hover:text-white',
+            'bg-water/18 text-white shadow-[inset_3px_0_0_var(--color-water)]' => request()->routeIs($pattern),
+        ])><svg class="flex-none opacity-80" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{!! $icons[$icon] !!}</svg>{{ $label }}@if ($count)<span class="ml-auto rounded-full bg-crit px-[7px] py-px font-mono text-[.72rem] text-white">{{ $count }}</span>@endif</a>
         @endforeach
       </div>
       @endforeach
     </nav>
     @php($me = auth()->user())
-    <div class="side-foot">
-      <div class="row" style="flex-wrap:nowrap;gap:10px;margin-bottom:10px"><span class="av" style="background:{{ $me->role->color() }}">{{ $me->initials() }}</span><span style="line-height:1.25;min-width:0"><strong style="color:#fff;font-size:.84rem">{{ $me->name }}</strong><br>{{ $me->role->label() }}</span></div>
-      {{ $me->organization ?? 'AquaSecure' }}<br><span class="mono">v1.0 · Laravel 12</span>
+    <div class="mt-auto border-t border-white/10 px-2.5 pt-3.5 pb-1 text-[.78rem] text-[#7FA6C0]">
+      <div class="mb-2.5 flex items-center gap-2.5">
+        <span class="grid size-9 flex-none place-items-center rounded-full text-[.8rem] font-bold text-white" style="background:{{ $me->role->color() }}">{{ $me->initials() }}</span>
+        <span class="min-w-0 leading-tight"><strong class="text-[.84rem] text-white">{{ $me->name }}</strong><br>{{ $me->role->label() }}</span>
+      </div>
+      {{ $me->organization ?? 'AquaSecure' }}<br><span class="font-mono">v1.0 · Laravel 12</span>
     </div>
   </aside>

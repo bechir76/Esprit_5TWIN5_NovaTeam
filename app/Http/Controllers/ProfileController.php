@@ -5,15 +5,19 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rules\Password;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
- * Profil de l'utilisateur connecté, partagé par le front (/profil) et le back office (/admin/profil) :
- * seule la vue change selon la route.
+ * Profil de l'utilisateur connecté (Breeze), partagé par le front (/profil) et le back office (/admin/profil) :
+ * seule la vue change selon la route. Le mot de passe est modifié par Auth\PasswordController.
  */
 class ProfileController extends Controller
 {
+    /**
+     * Display the user's profile form.
+     */
     public function edit(Request $request): View
     {
         if ($request->routeIs('admin.*')) {
@@ -28,29 +32,49 @@ class ProfileController extends Controller
         ]);
     }
 
+    /**
+     * Update the user's profile information.
+     */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $user = $request->user();
-        $user->fill($request->validated());
+        $request->user()->fill($request->validated());
 
-        if ($user->isDirty('email')) {
-            $user->email_verified_at = null;
+        if ($request->user()->isDirty('email')) {
+            $request->user()->email_verified_at = null;
         }
 
-        $user->save();
+        $request->user()->save();
 
         return back()->with('status', 'Profil mis à jour.');
     }
 
-    public function updatePassword(Request $request): RedirectResponse
+    /**
+     * Delete the user's account.
+     *
+     * Réservé aux citoyens : les comptes du personnel sont supprimés par un administrateur
+     * (Utilisateurs), qui ne peut pas supprimer le sien.
+     */
+    public function destroy(Request $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'current_password' => ['required', 'current_password'],
-            'password' => ['required', 'confirmed', Password::defaults()],
+        $request->validateWithBag('userDeletion', [
+            'password' => ['required', 'current_password'],
         ]);
 
-        $request->user()->update(['password' => $validated['password']]);
+        $user = $request->user();
 
-        return back()->with('status', 'Mot de passe modifié.');
+        if ($user->isStaff()) {
+            throw ValidationException::withMessages([
+                'password' => 'Les comptes du personnel sont supprimés par un administrateur.',
+            ])->errorBag('userDeletion');
+        }
+
+        Auth::logout();
+
+        $user->delete();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return to_route('home')->with('status', 'Votre compte a été supprimé.');
     }
 }

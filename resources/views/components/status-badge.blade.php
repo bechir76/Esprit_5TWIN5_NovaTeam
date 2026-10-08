@@ -1,7 +1,7 @@
 @props(['value', 'dot' => false, 'variant' => null])
 
 @php
-    // Couleur du badge selon la valeur affichée (statut, gravité ou état)
+    // Couleur du badge selon la valeur affichée (statut, gravité ou état) : b-ok, b-warn, b-crit, b-info, b-mute
     $variants = [
         'b-ok' => ['Bon', 'Conforme', 'Résolu', 'Résolue', 'Faible', 'Financé', 'Actif', 'Active', 'Terminée', 'Terminé', 'Reçu'],
         'b-warn' => ['À surveiller', 'Signalé', 'Moyenne', 'Moyen', 'En travaux', 'En attente'],

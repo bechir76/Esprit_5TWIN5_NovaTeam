@@ -12,19 +12,25 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Connexion front et back office : identifiants, compte actif, rôle (back) et limitation des tentatives.
+ * Connexion Breeze, utilisée par le front (/connexion) et le back office (/admin/login) :
+ * identifiants, compte actif (is_active), rôle du personnel pour le back office et limitation des tentatives.
  */
 class LoginRequest extends FormRequest
 {
     /** Tentatives échouées autorisées par e-mail et IP avant blocage temporaire. */
     public const MAX_ATTEMPTS = 5;
 
+    /**
+     * Determine if the user is authorized to make this request.
+     */
     public function authorize(): bool
     {
         return true;
     }
 
     /**
+     * Get the validation rules that apply to the request.
+     *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
@@ -36,7 +42,10 @@ class LoginRequest extends FormRequest
     }
 
     /**
-     * Vérifie les identifiants puis connecte l'utilisateur.
+     * Attempt to authenticate the request's credentials.
+     *
+     * Les identifiants sont vérifiés avant la connexion : un compte suspendu, ou un citoyen sur le back office,
+     * n'ouvre jamais de session.
      *
      * @param  bool  $staffOnly  true pour le back office : le rôle citoyen est refusé
      *
@@ -46,30 +55,33 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        $provider = Auth::guard('web')->getProvider();
-        /** @var User|null $user */
-        $user = $provider->retrieveByCredentials($this->only('email'));
-
-        if (! $user || ! $provider->validateCredentials($user, $this->only('password'))) {
+        if (! Auth::validate($this->only('email', 'password'))) {
             RateLimiter::hit($this->throttleKey());
 
-            throw ValidationException::withMessages(['email' => __('auth.failed')]);
+            throw ValidationException::withMessages([
+                'email' => trans('auth.failed'),
+            ]);
         }
 
         RateLimiter::clear($this->throttleKey());
 
+        /** @var User $user */
+        $user = Auth::getLastAttempted();
+
         if (! $user->is_active) {
-            throw ValidationException::withMessages(['email' => __('auth.suspended')]);
+            throw ValidationException::withMessages(['email' => trans('auth.suspended')]);
         }
 
         if ($staffOnly && ! $user->isStaff()) {
-            throw ValidationException::withMessages(['email' => __('auth.staff_only')]);
+            throw ValidationException::withMessages(['email' => trans('auth.staff_only')]);
         }
 
-        Auth::guard('web')->login($user, $this->boolean('remember'));
+        Auth::login($user, $this->boolean('remember'));
     }
 
     /**
+     * Ensure the login request is not rate limited.
+     *
      * @throws ValidationException
      */
     public function ensureIsNotRateLimited(): void
@@ -83,10 +95,16 @@ class LoginRequest extends FormRequest
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
-            'email' => __('auth.throttle', ['seconds' => $seconds]),
+            'email' => trans('auth.throttle', [
+                'seconds' => $seconds,
+                'minutes' => ceil($seconds / 60),
+            ]),
         ]);
     }
 
+    /**
+     * Get the rate limiting throttle key for the request.
+     */
     public function throttleKey(): string
     {
         return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());

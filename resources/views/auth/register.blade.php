@@ -3,26 +3,37 @@
 @section('title', 'Inscription')
 
 @section('content')
-<section class="screen" data-page="inscription">
-  <div class="wrap">
-    <div class="auth">
-      <div class="auth-side">
-        <a class="brand" style="color:#fff" href="{{ route('home') }}"><svg width="30" height="30" viewBox="0 0 32 32"><path d="M16 3C16 3 6 14.5 6 20.5a10 10 0 0 0 20 0C26 14.5 16 3 16 3Z" fill="#1CA7EC"/></svg>AquaSecure</a>
-        <div><h2 style="color:#fff">Devenez les yeux du réseau.</h2><p style="color:#C7DDEB;margin-top:12px;max-width:40ch">Un compte vous permet de suivre vos signalements et de recevoir les alertes de coupure de votre quartier.</p></div>
-        <div></div>
-      </div>
-      <form class="auth-form" method="POST" action="{{ route('register') }}" novalidate>
+<section class="pt-10 pb-16" data-page="inscription">
+  <div class="mx-auto max-w-[1200px] px-5">
+    <div class="grid min-h-[640px] overflow-hidden rounded-panel border border-line bg-surface min-[861px]:grid-cols-2">
+      @include('auth.partials.side', [
+          'title' => 'Devenez les yeux du réseau.',
+          'text' => 'Un compte vous permet de suivre vos signalements et de recevoir les alertes de coupure de votre quartier.',
+      ])
+
+      <form class="mx-auto flex w-full max-w-[460px] flex-col justify-center gap-[18px] px-5 py-7 min-[861px]:p-11" method="POST" action="{{ route('register') }}" novalidate>
         @csrf
-        <div><h2>Créer un compte</h2></div>
-        <div class="grid g2" style="gap:12px;grid-template-columns:1fr 1fr">
-          <x-form.input name="first_name" label="Prénom" />
-          <x-form.input name="last_name" label="Nom" />
+        <h2>Créer un compte</h2>
+
+        <div class="grid grid-cols-2 gap-3">
+          <x-form.input name="first_name" label="Prénom" autocomplete="given-name" autofocus />
+          <x-form.input name="last_name" label="Nom" autocomplete="family-name" />
         </div>
-        <x-form.input name="email" label="Adresse e-mail" type="email" />
-        <x-form.input name="password" label="Mot de passe" type="password" hint="8 caractères minimum, dont un chiffre et une majuscule." />
-        <x-form.input name="password_confirmation" label="Confirmer le mot de passe" type="password" />
-        <label class="check"><input type="checkbox" name="terms" value="1" @checked(old('terms'))> J'accepte les conditions d'utilisation</label>
-        <button class="btn btn-primary" style="justify-content:center" type="submit">Créer mon compte</button>
+        <x-form.input name="email" label="Adresse e-mail" type="email" autocomplete="username" />
+        <div class="grid grid-cols-2 gap-3">
+          <x-form.input name="phone" label="Téléphone" type="tel" autocomplete="tel" hint="Facultatif" />
+          <x-form.input name="address" label="Adresse" autocomplete="street-address" hint="Facultatif" />
+        </div>
+        <x-form.input name="password" label="Mot de passe" type="password" autocomplete="new-password" hint="8 caractères minimum, dont un chiffre, une minuscule et une majuscule." />
+        <x-form.input name="password_confirmation" label="Confirmer le mot de passe" type="password" autocomplete="new-password" />
+
+        <div class="flex flex-col gap-1.5">
+          <label class="flex items-center gap-2.5 text-[.92rem]"><input class="size-4 accent-water" type="checkbox" name="terms" value="1" @checked(old('terms'))> J'accepte les conditions d'utilisation</label>
+          @error('terms')<span class="text-[.8rem] font-medium text-crit-fg">{{ $message }}</span>@enderror
+        </div>
+
+        <button class="btn btn-primary justify-center" type="submit">Créer mon compte</button>
+        <p class="text-center text-[.9rem] text-muted">Déjà inscrit ? <a class="text-water underline" href="{{ route('login') }}">Se connecter</a></p>
       </form>
     </div>
   </div>
