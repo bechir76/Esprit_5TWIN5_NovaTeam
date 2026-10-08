@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Enums\InfrastructureStatus;
-use App\Enums\InfrastructureType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreInfrastructureRequest;
 use App\Http\Requests\Admin\UpdateInfrastructureRequest;
@@ -11,36 +9,15 @@ use App\Models\Infrastructure;
 use App\Models\Zone;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /** CRUD des infrastructures (personnel). */
 class InfrastructureController extends Controller
 {
-    public function index(Request $request): View
+    /** Liste : tableau, filtres (?q, ?type, ?status, ?zone) et pagination rendus par le composant Livewire InfrastructureTable. */
+    public function index(): View
     {
-        $filters = $request->validate([
-            'q' => ['nullable', 'string', 'max:100'],
-            'type' => ['nullable', Rule::enum(InfrastructureType::class)],
-            'status' => ['nullable', Rule::enum(InfrastructureStatus::class)],
-            'zone' => ['nullable', 'integer'],
-        ]);
-
-        $infrastructures = Infrastructure::query()
-            ->with('zone')
-            ->search($filters['q'] ?? null)
-            ->ofType($filters['type'] ?? null)
-            ->ofStatus($filters['status'] ?? null)
-            ->inZone($filters['zone'] ?? null)
-            ->orderBy('code')
-            ->paginate(10)
-            ->withQueryString();
-
-        return view('back.infrastructures.index', [
-            'infrastructures' => $infrastructures,
-            'filters' => $filters,
-            'zones' => Zone::options(),
-        ]);
+        return view('back.infrastructures.index');
     }
 
     public function create(Request $request): View

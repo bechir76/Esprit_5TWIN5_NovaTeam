@@ -12,7 +12,7 @@
 @section('content')
 <section data-page="incident" class="flex flex-col gap-3">
   <x-page-header :title="$incident->title" :crumb="'Console / Incidents / '.$incident->reference">
-    <x-slot:badges><x-status-badge :value="$incident->severity->label()" :variant="$incident->severity->badge()" dot /><x-status-badge :value="$incident->status->label()" :variant="$incident->status->badge()" /></x-slot:badges>
+    <x-slot:badges><x-status-badge :value="$incident->severity->label()" :variant="$incident->severity->badge()" dot /><span class="badge {{ $incident->status->badge() }}" x-data="{ label: @js($incident->status->label()), variant: @js($incident->status->badge()) }" x-on:incident-status-updated.window="$el.classList.remove(variant); variant = $event.detail.variant; $el.classList.add(variant); label = $event.detail.label" x-text="label">{{ $incident->status->label() }}</span></x-slot:badges>
     <div class="flex flex-wrap items-center gap-2.5"><a class="btn btn-ghost" href="{{ route('admin.incidents.edit', $incident) }}">Modifier</a><button class="btn btn-danger" type="button" data-del="{{ $incident->reference }}" data-action="{{ route('admin.incidents.destroy', $incident) }}">Supprimer</button></div>
   </x-page-header>
   <div class="grid items-start gap-[18px] min-[1101px]:grid-cols-[minmax(0,1fr)_340px]">
@@ -84,13 +84,8 @@
       </div></div>
     </div>
     <aside class="flex flex-col gap-[18px]">
-      <form class="card p-[18px] flex flex-col gap-3" method="POST" action="{{ route('admin.incidents.status', $incident) }}" novalidate>
-        @csrf
-        @method('PATCH')
-        <h2>Traitement</h2>
-        <x-form.select name="status" label="Statut" :value="$incident->status->value" :options="\App\Enums\IncidentStatus::options()" hint="Le passage à « Résolu » enregistre la date de résolution." />
-        <button class="btn btn-primary justify-center" type="submit">Mettre à jour</button>
-      </form>
+      {{-- Changement de statut sans rechargement : composant Livewire (app/Livewire/IncidentStatus.php) --}}
+      <livewire:incident-status :incident="$incident" />
       <div class="card p-[18px] flex flex-col gap-3"><h2>Localisation</h2>
         <x-location-map :latitude="$incident->latitude" :longitude="$incident->longitude" :color="$incident->severity->color()" :height="160" />
         @if ($incident->hasCoordinates())

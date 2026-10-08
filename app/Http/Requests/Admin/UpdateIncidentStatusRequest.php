@@ -21,6 +21,16 @@ class UpdateIncidentStatusRequest extends FormRequest
      */
     public function rules(): array
     {
+        return self::statusRules();
+    }
+
+    /**
+     * Règles partagées avec le composant Livewire IncidentStatus.
+     *
+     * @return array<string, array<mixed>>
+     */
+    public static function statusRules(): array
+    {
         return [
             'status' => ['required', Rule::enum(IncidentStatus::class)],
         ];
@@ -42,6 +52,14 @@ class UpdateIncidentStatusRequest extends FormRequest
      * @return array<string, string>
      */
     public function messages(): array
+    {
+        return self::statusMessages();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function statusMessages(): array
     {
         return [
             'status.required' => 'Choisissez le nouveau statut.',

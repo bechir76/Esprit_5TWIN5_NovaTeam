@@ -17,6 +17,7 @@ window.AQUA_ROUTES = {{ Js::from([
 ]) }};
 </script>
 @vite(['resources/css/back.css', 'resources/js/back.js'])
+@livewireStyles
 @stack('styles')
 </head>
 <body class="antialiased">
@@ -38,6 +39,7 @@ window.AQUA_ROUTES = {{ Js::from([
 <x-confirm-delete />
 @include('layouts.back.partials.toasts')
 
+@livewireScriptConfig
 @stack('scripts')
 </body>
 </html>

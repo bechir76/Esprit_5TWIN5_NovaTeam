@@ -1,28 +1,55 @@
 # AquaSecure
 
-Application de gestion des infrastructures d'eau potable (Laravel 12, PHP 8.2+).
+Application de gestion des infrastructures d'eau potable.
 
-- **AquaSecure Citoyens** (front) : carte du réseau, signalement d'incidents, projets, espace citoyen.
-- **AquaSecure Gestion** (back office, `/admin`) : console du personnel (admin, gestionnaires, techniciens).
+- **AquaSecure Citoyens** (front) : carte du réseau, qualité de l'eau, signalement d'incidents, projets à financer, espace citoyen.
+- **AquaSecure Gestion** (back office, `/admin`) : console du personnel (administrateurs, gestionnaires, techniciens).
 
-## Interface
+## Stack technique
 
-- Authentification : **Laravel Breeze** (pile Blade) : contrôleurs `App\Http\Controllers\Auth\*`, `ProfileController`, `LoginRequest`, routes dans `routes/auth.php` (URIs françaises).
-- Vues **Blade + Tailwind CSS 4** (Vite) : thème AquaSecure dans `resources/css/app.css` (`@theme`), feuilles `resources/css/front.css` et `back.css`, JS `resources/js/front.js` et `back.js` avec Alpine.js.
-- Toutes les vues utilisent les classes Tailwind du thème ; quelques classes `@apply` regroupent les motifs répétés (`card`, `btn`, `badge`, `input`, `data-table`, `card-header`, `filter-bar`, `form-section`, `timeline`…).
+| Brique | Rôle dans le projet | Où |
+|---|---|---|
+| **Laravel 12** (PHP 8.2+) | Routes, contrôleurs, modèles Eloquent, validation (FormRequest), tests PHPUnit | `routes/`, `app/`, `tests/` |
+| **Blade** | Vues avec héritage de layouts (`@extends`, `@section`, `@yield`, `@include`, `@stack`) et composants Blade (`<x-…>`) | `resources/views/layouts`, `resources/views/components` |
+| **Tailwind CSS 4** | Toute la mise en forme, avec le thème AquaSecure (couleurs, polices) déclaré par `@theme` ; compilé par Vite | `resources/css/app.css`, `front.css`, `back.css`, `vite.config.js` |
+| **Livewire 3** | Composants dynamiques sans rechargement de page (Alpine.js inclus) | `app/Livewire`, `resources/views/livewire` |
+| **Laravel Breeze** (pile Blade) | Authentification : connexion, inscription, mot de passe oublié, vérification de l'e-mail, profil | `routes/auth.php`, `app/Http/Controllers/Auth`, `app/Http/Requests/Auth/LoginRequest.php`, `resources/views/auth` |
 
-## Installation
+Quelques classes `@apply` regroupent les motifs Tailwind répétés (`card`, `btn`, `badge`, `input`, `data-table`, `card-header`, `filter-bar`, `form-section`, `timeline`…). Le JavaScript des écrans (graphiques, carte, toasts, modale de suppression) est dans `resources/js/front.js` et `back.js` ; Alpine.js (fourni par Livewire) gère les menus, le burger, la sidebar mobile et le chatbot.
 
-```bash
-composer install && npm install
-npm run build                        # CSS Tailwind et JS (Vite) dans public/build
-cp .env.example .env
+## Composants Livewire
+
+| Composant | Écran | Ce qu'il fait |
+|---|---|---|
+| `InfrastructureTable` | `/admin/infrastructures` | Liste des infrastructures : recherche en direct (`wire:model.live.debounce.300ms`), filtres type / état / zone, pagination Livewire ; filtres conservés dans l'URL ; boutons voir, modifier, supprimer (modale existante) |
+| `IncidentStatus` | `/admin/incidents/{id}` | Changement du statut d'un incident sans rechargement : date de résolution remplie ou vidée, clôture refusée tant qu'une intervention est active, message de confirmation et badge de l'en-tête mis à jour |
+| `ProjectContribution` | `/projets/{slug}` | Contribution d'un citoyen connecté (montants rapides ou montant libre de 5 à 10 000 TND) : validation en temps réel, montant collecté et barre de progression mis à jour, passage automatique au statut « Financé » ; un visiteur voit un lien vers la connexion |
+| `WaterQualityFilter` | `/qualite-eau` | Filtre par zone des dernières analyses validées, sans rechargement (zone conservée dans l'URL) |
+
+Chaque composant = une classe PHP dans `app/Livewire` + une vue Blade dans `resources/views/livewire`, inclus dans la page par `<livewire:nom-du-composant />`. La logique métier reste dans les modèles et FormRequest existants (`Infrastructure::filter()`, `Incident::statusConflict()`, `Project::contributionRefusal()` / `recordContribution()`, `WaterAnalysis::latestValidatedByZone()`), partagés avec les contrôleurs. Sans JavaScript, les formulaires restent envoyés aux routes classiques. Tests : `tests/Feature/Livewire`.
+
+## Prérequis
+
+- **PHP 8.2+** avec les extensions `pdo_sqlite`, `sqlite3`, `zip`, `fileinfo`, `gd` (à activer dans `php.ini`)
+- **Composer**
+- **Node.js LTS** (avec npm)
+
+## Installation (Windows)
+
+```bat
+composer install
+npm install
+npm run build
+copy .env.example .env
 php artisan key:generate
-php artisan migrate:fresh --seed     # base SQLite : database/database.sqlite
-php artisan serve                    # http://127.0.0.1:8000
+type nul > database\database.sqlite
+php artisan migrate:fresh --seed
+php artisan serve
 ```
 
-`MAIL_MAILER=log` : les e-mails (lien de réinitialisation du mot de passe) sont écrits dans `storage/logs/laravel.log`.
+Puis ouvrir http://127.0.0.1:8000 (site citoyen) ou http://127.0.0.1:8000/admin/login (console de gestion).
+
+`npm run build` compile le CSS Tailwind et le JS dans `public/build` (à relancer après une modification des vues ou de `resources/`, ou utiliser `npm run dev` pendant le développement). `MAIL_MAILER=log` : les e-mails (lien de réinitialisation du mot de passe) sont écrits dans `storage/logs/laravel.log`.
 
 ## Comptes de test
 
@@ -240,5 +267,3 @@ composer run dev        # serveur + queue + logs + vite
 php artisan test        # tests (SQLite en mémoire)
 vendor/bin/pint         # style de code
 ```
-
-Voir `CLAUDE.md` pour les conventions (templates, Blade, routes, rôles).

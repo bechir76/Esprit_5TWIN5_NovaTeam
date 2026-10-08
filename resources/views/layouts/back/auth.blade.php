@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 @vite(['resources/css/back.css', 'resources/js/back.js'])
+@livewireStyles
 @stack('styles')
 </head>
 <body class="antialiased">
@@ -17,6 +18,7 @@
 
 @include('layouts.back.partials.toasts')
 
+@livewireScriptConfig
 @stack('scripts')
 </body>
 </html>

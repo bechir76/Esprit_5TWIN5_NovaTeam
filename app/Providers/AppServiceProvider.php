@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Middleware\EnsureUserIsStaff;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -9,6 +10,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -30,6 +32,9 @@ class AppServiceProvider extends ServiceProvider
 
         // Gestion des comptes et des rôles : administrateurs uniquement
         Gate::define('manage-users', fn (User $user) => $user->isAdmin());
+
+        // Les actions des composants Livewire du back office (requêtes /livewire/update) repassent par le middleware « staff »
+        Livewire::addPersistentMiddleware([EnsureUserIsStaff::class]);
 
         // Règle des mots de passe (inscription, réinitialisation, profil, CRUD utilisateurs)
         Password::defaults(fn () => Password::min(8)->mixedCase()->numbers());

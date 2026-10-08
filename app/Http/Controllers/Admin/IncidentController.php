@@ -110,7 +110,7 @@ class IncidentController extends Controller
         $incident->update($request->validated());
 
         return to_route('admin.incidents.show', $incident)
-            ->with('status', "Incident {$incident->reference} : statut « {$incident->status->label()} ».");
+            ->with('status', $incident->statusChangedMessage());
     }
 
     public function destroy(Incident $incident): RedirectResponse

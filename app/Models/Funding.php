@@ -48,6 +48,20 @@ class Funding extends Model
         'funded_at' => 'date',
     ];
 
+    // ---------------------------------------------------------------- Contribution citoyenne
+
+    /** Montant saisi par un citoyen : virgule décimale et espaces (milliers) acceptés. */
+    public static function normalizeAmount(mixed $amount): mixed
+    {
+        return is_string($amount) ? str_replace([',', ' ', "\u{00A0}", "\u{202F}"], ['.', '', '', ''], $amount) : $amount;
+    }
+
+    /** Message de remerciement affiché après une contribution citoyenne. */
+    public function contributionThanks(): string
+    {
+        return 'Merci ! Votre contribution de '.Project::money($this->amount)." TND ({$this->reference}) est enregistrée. Paiement simulé.";
+    }
+
     // ---------------------------------------------------------------- Hooks
 
     protected static function booted(): void

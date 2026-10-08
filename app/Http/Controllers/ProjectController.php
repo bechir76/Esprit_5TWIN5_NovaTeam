@@ -10,7 +10,6 @@ use App\Models\Funding;
 use App\Models\Project;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -76,27 +75,14 @@ class ProjectController extends Controller
             'bySource' => $bySource,
             'sources' => FundingSource::cases(),
             'statuses' => ProjectStatus::cases(),
-            'presets' => [20, 50, 100],
         ]);
     }
 
     /** POST /projets/{slug}/contributions : enregistre la contribution du citoyen connecté (aucun paiement réel). */
     public function contribute(StoreContributionRequest $request, Project $project): RedirectResponse
     {
-        $user = $request->user();
+        $funding = $project->recordContribution($request->user(), $request->validated('amount'));
 
-        // Le statut du projet est recalculé par le hook saved du financement
-        $funding = DB::transaction(fn () => $project->fundings()->create([
-            'source_type' => FundingSource::Citoyen,
-            'donor_name' => $user->name,
-            'user_id' => $user->id,
-            'amount' => $request->validated('amount'),
-            'funded_at' => today(),
-        ]));
-
-        $amount = Project::money($funding->amount);
-
-        return to_route('projects.show', $project)
-            ->with('status', "Merci ! Votre contribution de {$amount} TND ({$funding->reference}) est enregistrée. Paiement simulé.");
+        return to_route('projects.show', $project)->with('status', $funding->contributionThanks());
     }
 }

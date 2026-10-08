@@ -8,34 +8,34 @@ namespace App\Enums;
  */
 enum WaterParameter: string
 {
-    case Chlore        = 'chlore';
-    case Ph            = 'ph';
-    case Turbidite     = 'turbidite';
-    case Nitrate       = 'nitrate';
-    case Conductivite  = 'conductivite';
-    case Ecoli         = 'ecoli';
+    case Chlore = 'chlore';
+    case Ph = 'ph';
+    case Turbidite = 'turbidite';
+    case Nitrate = 'nitrate';
+    case Conductivite = 'conductivite';
+    case Ecoli = 'ecoli';
 
     public function label(): string
     {
         return match ($this) {
-            self::Chlore       => 'Chlore résiduel',
-            self::Ph           => 'pH',
-            self::Turbidite    => 'Turbidité',
-            self::Nitrate      => 'Nitrate',
+            self::Chlore => 'Chlore résiduel',
+            self::Ph => 'pH',
+            self::Turbidite => 'Turbidité',
+            self::Nitrate => 'Nitrate',
             self::Conductivite => 'Conductivité',
-            self::Ecoli        => 'E. coli',
+            self::Ecoli => 'E. coli',
         };
     }
 
     public function unit(): string
     {
         return match ($this) {
-            self::Chlore       => 'mg/L',
-            self::Ph           => '',
-            self::Turbidite    => 'NTU',
-            self::Nitrate      => 'mg/L',
+            self::Chlore => 'mg/L',
+            self::Ph => '',
+            self::Turbidite => 'NTU',
+            self::Nitrate => 'mg/L',
             self::Conductivite => 'µS/cm',
-            self::Ecoli        => 'UFC/100 mL',
+            self::Ecoli => 'UFC/100 mL',
         };
     }
 
@@ -46,8 +46,8 @@ enum WaterParameter: string
     {
         return match ($this) {
             self::Chlore => 0.1,
-            self::Ph     => 6.5,
-            default      => null,
+            self::Ph => 6.5,
+            default => null,
         };
     }
 
@@ -57,12 +57,12 @@ enum WaterParameter: string
     public function max(): ?float
     {
         return match ($this) {
-            self::Chlore       => 0.5,
-            self::Ph           => 8.5,
-            self::Turbidite    => 1.0,
-            self::Nitrate      => 50.0,
+            self::Chlore => 0.5,
+            self::Ph => 8.5,
+            self::Turbidite => 1.0,
+            self::Nitrate => 50.0,
             self::Conductivite => 2500.0,
-            self::Ecoli        => 0.0,
+            self::Ecoli => 0.0,
         };
     }
 
@@ -88,13 +88,23 @@ enum WaterParameter: string
         $unit = $this->unit();
 
         return match ($this) {
-            self::Chlore       => "Entre {$this->min()} et {$this->max()} {$unit}",
-            self::Ph           => "Entre {$this->min()} et {$this->max()}",
-            self::Turbidite    => "≤ {$this->max()} {$unit}",
-            self::Nitrate      => "≤ {$this->max()} {$unit}",
+            self::Chlore => "Entre {$this->min()} et {$this->max()} {$unit}",
+            self::Ph => "Entre {$this->min()} et {$this->max()}",
+            self::Turbidite => "≤ {$this->max()} {$unit}",
+            self::Nitrate => "≤ {$this->max()} {$unit}",
             self::Conductivite => "≤ {$this->max()} {$unit}",
-            self::Ecoli        => "= 0 {$unit}",
+            self::Ecoli => "= 0 {$unit}",
         };
+    }
+
+    /**
+     * Paramètres principaux affichés sur la page publique /qualite-eau.
+     *
+     * @return list<self>
+     */
+    public static function publicMain(): array
+    {
+        return [self::Chlore, self::Ph, self::Turbidite, self::Nitrate];
     }
 
     /** @return array<string, string> valeur => libellé, pour <x-form.select> */

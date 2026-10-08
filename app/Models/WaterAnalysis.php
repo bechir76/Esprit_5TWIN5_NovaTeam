@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 
 /**
  * Analyse de la qualité de l'eau réalisée sur une infrastructure.
@@ -39,7 +40,7 @@ class WaterAnalysis extends Model
      */
     protected $casts = [
         'sampled_at' => 'datetime',
-        'status'     => AnalysisStatus::class,
+        'status' => AnalysisStatus::class,
     ];
 
     // ---------------------------------------------------------------- Hooks
@@ -82,8 +83,6 @@ class WaterAnalysis extends Model
 
     /**
      * Pourcentage de mesures conformes (0–100), ou null si aucune mesure.
-     *
-     * @return int|null
      */
     public function getComplianceRateAttribute(): ?int
     {
@@ -140,7 +139,7 @@ class WaterAnalysis extends Model
 
         $seq = $lastRef ? ((int) substr($lastRef, strlen($prefix))) + 1 : 1;
 
-        return $prefix . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+        return $prefix.str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
     }
 
     // ---------------------------------------------------------------- Scopes
@@ -170,9 +169,28 @@ class WaterAnalysis extends Model
     }
 
     /**
+     * Page publique /qualite-eau : dernière analyse validée de chaque zone (ou de la zone choisie),
+     * avec ses mesures. Partagé par WaterQualityController et le composant Livewire WaterQualityFilter.
+     *
+     * @return Collection<int, WaterAnalysis>
+     */
+    public static function latestValidatedByZone(?int $zone = null): Collection
+    {
+        return self::query()
+            ->with(['measurements', 'infrastructure.zone'])
+            ->ofStatus(AnalysisStatus::Validee)
+            ->inZone($zone)
+            ->orderByDesc('sampled_at')
+            ->get()
+            ->groupBy(fn (self $analysis) => $analysis->infrastructure->zone_id ?? 0)
+            ->map(fn (Collection $group) => $group->first())
+            ->values();
+    }
+
+    /**
      * Analyses rattachées à une zone (via l'infrastructure).
      *
-     * @param Builder<WaterAnalysis> $query
+     * @param  Builder<WaterAnalysis>  $query
      */
     public function scopeInZone(Builder $query, Zone|int|string|null $zone): void
     {

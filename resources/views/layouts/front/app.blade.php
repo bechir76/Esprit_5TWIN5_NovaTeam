@@ -16,6 +16,7 @@ window.AQUA_ROUTES = {{ Js::from([
 ]) }};
 </script>
 @vite(['resources/css/front.css', 'resources/js/front.js'])
+@livewireStyles
 @stack('styles')
 </head>
 <body class="min-h-screen antialiased">
@@ -31,6 +32,7 @@ window.AQUA_ROUTES = {{ Js::from([
 <x-chatbot />
 @include('layouts.front.partials.toast')
 
+@livewireScriptConfig
 @stack('scripts')
 </body>
 </html>

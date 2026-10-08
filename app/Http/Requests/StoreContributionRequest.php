@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\ProjectStatus;
 use App\Models\Funding;
 use App\Models\Project;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -12,6 +11,7 @@ use Illuminate\Foundation\Http\FormRequest;
 /**
  * Contribution d'un citoyen connecté depuis la fiche d'un projet (paiement simulé).
  * Seul le montant vient du formulaire : projet (route), contributeur (session), source et date sont fixés côté serveur.
+ * Règles et messages partagés avec le composant Livewire ProjectContribution.
  */
 class StoreContributionRequest extends FormRequest
 {
@@ -24,6 +24,14 @@ class StoreContributionRequest extends FormRequest
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
+    {
+        return self::amountRules();
+    }
+
+    /**
+     * @return array<string, array<mixed>>
+     */
+    public static function amountRules(): array
     {
         return [
             'amount' => ['required', 'numeric', 'min:'.Funding::MIN_CONTRIBUTION, 'max:'.Funding::MAX_CONTRIBUTION],
@@ -38,10 +46,8 @@ class StoreContributionRequest extends FormRequest
 
             if (! $project instanceof Project) {
                 $v->errors()->add('project', 'Ce projet n\'existe pas.');
-            } elseif (! $project->is_public || $project->status !== ProjectStatus::EnCollecte) {
-                $v->errors()->add('project', "Ce projet n'accepte pas de contributions : il est « {$project->status->label()} ».");
-            } elseif ($project->isExpired()) {
-                $v->errors()->add('project', 'La collecte de ce projet est terminée depuis le '.$project->end_date->format('d/m/Y').'.');
+            } elseif ($refusal = $project->contributionRefusal()) {
+                $v->errors()->add('project', $refusal);
             }
         });
     }
@@ -50,6 +56,14 @@ class StoreContributionRequest extends FormRequest
      * @return array<string, string>
      */
     public function messages(): array
+    {
+        return self::amountMessages();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function amountMessages(): array
     {
         return [
             'amount.required' => 'Choisissez ou saisissez le montant de votre contribution.',
@@ -74,6 +88,6 @@ class StoreContributionRequest extends FormRequest
     {
         $amount = filled($this->input('amount_other')) ? $this->input('amount_other') : $this->input('amount');
 
-        $this->merge(['amount' => is_string($amount) ? str_replace([',', ' ', "\u{00A0}", "\u{202F}"], ['.', '', '', ''], $amount) : $amount]);
+        $this->merge(['amount' => Funding::normalizeAmount($amount)]);
     }
 }

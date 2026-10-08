@@ -142,6 +142,20 @@ class Infrastructure extends Model
         $query->when($zone, fn (Builder $q) => $q->where('zone_id', $zone instanceof Zone ? $zone->getKey() : $zone));
     }
 
+    /**
+     * Filtres de la liste du back office : q (recherche), type, status, zone ; une valeur vide ne filtre pas.
+     * Utilisé par le composant Livewire InfrastructureTable (liste /admin/infrastructures).
+     *
+     * @param  array{q?: ?string, type?: ?string, status?: ?string, zone?: int|string|null}  $filters
+     */
+    public function scopeFilter(Builder $query, array $filters): void
+    {
+        $query->search($filters['q'] ?? null)
+            ->ofType($filters['type'] ?? null)
+            ->ofStatus($filters['status'] ?? null)
+            ->inZone($filters['zone'] ?? null);
+    }
+
     /** Ouvrages visibles sur la carte publique. */
     public function scopePublic(Builder $query): void
     {

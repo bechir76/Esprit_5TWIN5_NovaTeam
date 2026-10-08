@@ -169,6 +169,12 @@ class Incident extends Model
         return null;
     }
 
+    /** Message de confirmation après un changement de statut (contrôleur et composant Livewire IncidentStatus). */
+    public function statusChangedMessage(): string
+    {
+        return "Incident {$this->reference} : statut « {$this->status->label()} ».";
+    }
+
     // ---------------------------------------------------------------- Génération de la référence
 
     /**

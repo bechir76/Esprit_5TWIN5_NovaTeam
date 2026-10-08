@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\FundingSource;
 use App\Enums\ProjectCategory;
 use App\Enums\ProjectStatus;
 use Database\Factories\ProjectFactory;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -150,6 +152,38 @@ class Project extends Model
     public function acceptsContributions(): bool
     {
         return $this->is_public && $this->status === ProjectStatus::EnCollecte && ! $this->isExpired();
+    }
+
+    /**
+     * Raison pour laquelle le projet refuse une contribution citoyenne, ou null s'il l'accepte.
+     * Partagé par StoreContributionRequest (route POST) et le composant Livewire ProjectContribution.
+     */
+    public function contributionRefusal(): ?string
+    {
+        if (! $this->is_public || $this->status !== ProjectStatus::EnCollecte) {
+            return "Ce projet n'accepte pas de contributions : il est « {$this->status->label()} ».";
+        }
+
+        if ($this->isExpired()) {
+            return 'La collecte de ce projet est terminée depuis le '.$this->end_date->format('d/m/Y').'.';
+        }
+
+        return null;
+    }
+
+    /**
+     * Enregistre la contribution d'un citoyen (paiement simulé) : source, contributeur et date fixés ici.
+     * Le statut du projet (« en collecte » → « financé ») est recalculé par le hook saved du financement.
+     */
+    public function recordContribution(User $user, float|int|string $amount): Funding
+    {
+        return DB::transaction(fn () => $this->fundings()->create([
+            'source_type' => FundingSource::Citoyen,
+            'donor_name' => $user->name,
+            'user_id' => $user->id,
+            'amount' => $amount,
+            'funded_at' => today(),
+        ]));
     }
 
     /** Montant lisible sans unité : 168400 => « 168 400 », 50.5 => « 50,50 ». */
