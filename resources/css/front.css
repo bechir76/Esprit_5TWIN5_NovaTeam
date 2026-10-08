@@ -1,6 +1,5 @@
 /* Site citoyen (layouts/front/app) : thème commun + composants aux dimensions du front */
 @import './app.css';
-@import './legacy/front-modules.css';
 
 @layer base {
     body {
@@ -47,5 +46,28 @@
 
     textarea.input {
         @apply min-h-[120px] resize-y;
+    }
+
+    /* Surtitre des écrans du site citoyen */
+    .kicker {
+        @apply font-mono text-xs tracking-[.08em] text-water uppercase;
+    }
+
+    /* Chronologie des projets : étapes à venir en gris */
+    .timeline-item {
+        @apply pb-5 text-[.95rem] before:border-line;
+    }
+
+    /* Tableaux du front : un peu plus aérés que ceux du back office */
+    .data-table {
+        @apply min-w-[720px] text-[.92rem];
+
+        & th {
+            @apply py-3 text-xs tracking-[.06em];
+        }
+
+        & td {
+            @apply py-3.5;
+        }
     }
 }

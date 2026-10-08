@@ -10,14 +10,14 @@
 @endphp
 
 @section('content')
-<section data-page="measurements" class="stack">
+<section data-page="measurements" class="flex flex-col gap-3">
 
   <x-page-header title="Mesures non conformes" crumb="Console / Qualité eau / Non conformes">
     <a class="btn btn-ghost" href="{{ route('admin.water-analyses.index') }}">← Toutes les analyses</a>
   </x-page-header>
 
   <div class="card">
-    <form class="filters" method="GET" action="{{ route('admin.measurements.index') }}">
+    <form class="filter-bar" method="GET" action="{{ route('admin.measurements.index') }}">
       <select class="input" name="parameter" aria-label="Paramètre" onchange="this.form.submit()">
         <option value="">Tous les paramètres</option>
         @foreach (\App\Enums\WaterParameter::cases() as $p)
@@ -36,8 +36,8 @@
       @endif
     </form>
 
-    <div class="table-wrap">
-      <table>
+    <div class="overflow-x-auto">
+      <table class="data-table">
         <thead>
           <tr>
             <th>Paramètre</th>
@@ -61,27 +61,27 @@
           @endphp
           <tr>
             <td><strong>{{ $param->label() }}</strong></td>
-            <td class="mono" style="color:var(--crit-fg);font-weight:600">
+            <td class="font-mono text-crit-fg font-semibold">
               {{ $val }}@if ($param->unit()) <small> {{ $param->unit() }}</small>@endif
             </td>
-            <td class="muted" style="font-size:.84rem">{{ $param->thresholdHint() }}</td>
-            <td class="mono" style="font-size:.82rem">
-              <a href="{{ route('admin.water-analyses.show', $analysis) }}" style="color:var(--info-fg)">
+            <td class="text-muted text-[.84rem]">{{ $param->thresholdHint() }}</td>
+            <td class="font-mono text-[.82rem]">
+              <a class="text-info-fg underline" href="{{ route('admin.water-analyses.show', $analysis) }}">
                 {{ $analysis->reference }}
               </a>
             </td>
             <td>
-              <a href="{{ route('admin.infrastructures.show', $analysis->infrastructure) }}" style="color:inherit">
+              <a class="underline" href="{{ route('admin.infrastructures.show', $analysis->infrastructure) }}">
                 {{ $analysis->infrastructure->name }}
               </a>
             </td>
             <td>{{ $analysis->infrastructure->zone->name ?? '—' }}</td>
-            <td class="mono" style="white-space:nowrap">{{ $analysis->sampled_at->format('d/m/Y') }}</td>
+            <td class="font-mono whitespace-nowrap">{{ $analysis->sampled_at->format('d/m/Y') }}</td>
             <td>
-              <div class="acts">
-                <a class="act" href="{{ route('admin.water-analyses.show', $analysis) }}" title="Voir l'analyse">{!! $eye !!}</a>
-                <a class="act" href="{{ route('admin.measurements.edit', $measurement) }}" title="Modifier">{!! $edit !!}</a>
-                <button class="act del" type="button"
+              <div class="flex justify-end gap-1.5">
+                <a class="btn-icon" href="{{ route('admin.water-analyses.show', $analysis) }}" title="Voir l'analyse">{!! $eye !!}</a>
+                <a class="btn-icon" href="{{ route('admin.measurements.edit', $measurement) }}" title="Modifier">{!! $edit !!}</a>
+                <button class="btn-icon btn-icon-danger" type="button"
                   data-del="{{ $param->label() }}"
                   data-action="{{ route('admin.measurements.destroy', $measurement) }}"
                   title="Supprimer">{!! $trash !!}</button>
@@ -90,7 +90,7 @@
           </tr>
           @empty
           <tr>
-            <td colspan="8" class="muted" style="text-align:center;padding:28px">
+            <td colspan="8" class="text-muted text-center p-7">
               Aucune mesure non conforme. 🎉
             </td>
           </tr>
@@ -99,8 +99,8 @@
       </table>
     </div>
 
-    <div class="foot">
-      <span class="muted">
+    <div class="card-footer">
+      <span class="text-muted">
         @if ($measurements->total())
           Affichage {{ $measurements->firstItem() }} à {{ $measurements->lastItem() }} sur {{ $measurements->total() }}
         @else

@@ -9,7 +9,7 @@ Application de gestion des infrastructures d'eau potable (Laravel 12, PHP 8.2+).
 
 - Authentification : **Laravel Breeze** (pile Blade) : contrôleurs `App\Http\Controllers\Auth\*`, `ProfileController`, `LoginRequest`, routes dans `routes/auth.php` (URIs françaises).
 - Vues **Blade + Tailwind CSS 4** (Vite) : thème AquaSecure dans `resources/css/app.css` (`@theme`), feuilles `resources/css/front.css` et `back.css`, JS `resources/js/front.js` et `back.js` avec Alpine.js.
-- `resources/css/legacy/` : styles transitoires des écrans de modules pas encore réécrits en classes Tailwind.
+- Toutes les vues utilisent les classes Tailwind du thème ; quelques classes `@apply` regroupent les motifs répétés (`card`, `btn`, `badge`, `input`, `data-table`, `card-header`, `filter-bar`, `form-section`, `timeline`…).
 
 ## Installation
 

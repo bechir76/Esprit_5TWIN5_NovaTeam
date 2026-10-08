@@ -8,7 +8,7 @@ import { $, fill, on } from './lib/dom';
 
 /* ---------------------------------------------------------------- Toasts */
 
-const toastClass = 'min-w-[260px] max-w-[360px] rounded-[9px] border border-l-4 border-line bg-surface px-4 py-3 text-[.88rem] shadow-toast';
+const toastClass = 'toast-card';
 
 function toast(message, error = false) {
     const box = $('toasts');
@@ -77,6 +77,9 @@ document.querySelectorAll('[data-spark]').forEach((el) => el.insertAdjacentHTML(
 
 /* ---------------------------------------------------------------- Graphiques du tableau de bord */
 
+/* Textes des axes et lignes de grille des graphiques SVG */
+const AXIS = 'fill-muted font-mono text-[11px]';
+
 /* Barres : incidents signalés et résolus par mois (data-series envoyé par DashboardController) */
 (function () {
     const el = $('barChart');
@@ -92,7 +95,7 @@ document.querySelectorAll('[data-spark]').forEach((el) => el.insertAdjacentHTML(
 
     for (let v = 0; v <= max; v += max / 4) {
         const y = T + (H - T - B) * (1 - v / max);
-        s += `<line class="grid-l" x1="${L}" x2="${W - 6}" y1="${y}" y2="${y}"/><text x="${L - 8}" y="${y + 4}" text-anchor="end">${v}</text>`;
+        s += `<line class="stroke-line" x1="${L}" x2="${W - 6}" y1="${y}" y2="${y}"/><text class="${AXIS}" x="${L - 8}" y="${y + 4}" text-anchor="end">${v}</text>`;
     }
 
     months.forEach((month, i) => {
@@ -102,7 +105,7 @@ document.querySelectorAll('[data-spark]').forEach((el) => el.insertAdjacentHTML(
             const h = (H - T - B) * v / max;
             s += `<rect x="${x + o}" y="${H - B - h}" width="${bw}" height="${h}" rx="3" fill="${c}"><title>${month} : ${v}</title></rect>`;
         });
-        s += `<text x="${x + bw + 1.5}" y="${H - 8}" text-anchor="middle">${month}</text>`;
+        s += `<text class="${AXIS}" x="${x + bw + 1.5}" y="${H - 8}" text-anchor="middle">${month}</text>`;
     });
 
     fill('barChart', s);
@@ -127,7 +130,7 @@ document.querySelectorAll('[data-spark]').forEach((el) => el.insertAdjacentHTML(
     s += `<text x="21" y="21" text-anchor="middle" font-family="Manrope,sans-serif" font-weight="800" font-size="8" fill="var(--color-ink)">${total}</text><text x="21" y="27" text-anchor="middle" font-size="3.2" fill="var(--color-muted)" font-family="IBM Plex Mono,monospace">OUVERTS</text>`;
 
     fill('donut', s);
-    fill('donutLegend', d.map((x) => `<li><span><i class="mr-2 inline-block size-2.5 rounded-[3px]" style="background:${x[2]}"></i>${x[0]}</span><span class="font-mono">${x[1]} · ${total ? Math.round(x[1] / total * 100) : 0} %</span></li>`).join(''));
+    fill('donutLegend', d.map((x) => `<li class="flex justify-between gap-2.5 text-[.86rem]"><span><i class="mr-2 inline-block size-2.5 rounded-[3px]" style="background:${x[2]}"></i>${x[0]}</span><span class="font-mono">${x[1]} · ${total ? Math.round(x[1] / total * 100) : 0} %</span></li>`).join(''));
 })();
 
 /* ---------------------------------------------------------------- Rôles et permissions (lecture seule) */
@@ -136,10 +139,8 @@ const modules = [['Infrastructures', [1, 1, 1, 0]], ['Incidents', [1, 1, 1, 1]],
 const abilities = ['view', 'create', 'update', 'delete'];
 const abilityLabels = ['voir', 'créer', 'modifier', 'supprimer'];
 
-fill('matrix', modules.map((m, i) => `<tr><td><strong>${m[0]}</strong></td>${m[1].map((v, j) => `<td><input type="checkbox" id="perm${i}${j}" name="permissions[${m[0]}][]" value="${abilities[j]}" ${v ? 'checked' : ''} aria-label="${m[0]} ${abilityLabels[j]}"></td>`).join('')}</tr>`).join(''));
+fill('matrix', modules.map((m, i) => `<tr><td class="text-left!"><strong>${m[0]}</strong></td>${m[1].map((v, j) => `<td class="text-center"><input class="size-4 accent-water" type="checkbox" id="perm${i}${j}" name="permissions[${m[0]}][]" value="${abilities[j]}" ${v ? 'checked' : ''} aria-label="${m[0]} ${abilityLabels[j]}"></td>`).join('')}</tr>`).join(''));
 
-const rolesGrid = $('rolesGrid');
-if (rolesGrid && innerWidth < 760) rolesGrid.style.gridTemplateColumns = '1fr';
 
 /* ---------------------------------------------------------------- Analyses IA (données de démonstration) */
 
@@ -159,12 +160,12 @@ fill('riskTable', risk.map((r) => {
     const y = (b) => T + (H - T - B) * (1 - b / mx);
     let s = '';
 
-    for (let b = 0; b <= 4; b++) s += `<line class="grid-l" x1="${L}" x2="${W - 6}" y1="${y(b)}" y2="${y(b)}"/><text x="${L - 8}" y="${y(b) + 4}" text-anchor="end">${b}</text>`;
+    for (let b = 0; b <= 4; b++) s += `<line class="stroke-line" x1="${L}" x2="${W - 6}" y1="${y(b)}" y2="${y(b)}"/><text class="${AXIS}" x="${L - 8}" y="${y(b) + 4}" text-anchor="end">${b}</text>`;
     s += `<path d="M${x(0)} ${y(3.6)} L${x(23)} ${y(3.6)} L${x(23)} ${y(2.5)} L${x(0)} ${y(2.5)}Z" fill="var(--color-water-soft)"/>`;
     s += `<path d="${v.map((b, i) => (i ? 'L' : 'M') + x(i) + ' ' + y(b)).join(' ')}" fill="none" stroke="var(--color-water)" stroke-width="2.2"/>`;
     [6, 7, 8].forEach((i) => (s += `<circle cx="${x(i)}" cy="${y(v[i])}" r="4.5" fill="var(--color-crit)" stroke="var(--color-surface)" stroke-width="2"/>`));
-    s += `<text x="${x(8) + 10}" y="${y(1.2) + 4}" style="fill:var(--color-crit-fg)">03:00 · 1,2 bar</text>`;
-    [0, 6, 12, 18, 23].forEach((i) => (s += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${String(i).padStart(2, '0')}h</text>`));
+    s += `<text class="${AXIS} fill-crit-fg" x="${x(8) + 10}" y="${y(1.2) + 4}">03:00 · 1,2 bar</text>`;
+    [0, 6, 12, 18, 23].forEach((i) => (s += `<text class="${AXIS}" x="${x(i)}" y="${H - 6}" text-anchor="middle">${String(i).padStart(2, '0')}h</text>`));
 
     fill('anomChart', s);
 })();

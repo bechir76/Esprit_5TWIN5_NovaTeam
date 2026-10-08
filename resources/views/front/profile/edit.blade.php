@@ -2,16 +2,11 @@
 
 @section('title', 'Mon profil')
 
-@php
-    $row = 'flex justify-between gap-3 border-b border-line py-2.5 text-[.92rem]';
-    $switch = "absolute inset-0 cursor-pointer rounded-full bg-line transition peer-checked:bg-teal peer-focus-visible:outline-3 peer-focus-visible:outline-water before:absolute before:top-[3px] before:left-[3px] before:size-[18px] before:rounded-full before:bg-white before:transition before:content-[''] peer-checked:before:translate-x-5";
-@endphp
-
 @section('content')
 <section class="pt-10 pb-16" data-page="profil">
   <div class="mx-auto max-w-[1200px] px-5">
     <div class="mb-7 flex flex-col gap-2">
-      <span class="font-mono text-xs tracking-[.08em] text-water uppercase">Espace citoyen</span>
+      <span class="kicker">Espace citoyen</span>
       <h2>Mon profil</h2>
     </div>
 
@@ -74,7 +69,7 @@
           <div class="card scroll-mt-24 p-[22px]" id="contributions">
             <h3 class="mb-2.5">Mes contributions</h3>
             @forelse ($contributions as $funding)
-            <div class="{{ $row }}">
+            <div class="line-item">
               <span>
                 @if ($funding->project->is_public && $funding->project->status !== \App\Enums\ProjectStatus::Brouillon)
                 <a class="hover:underline" href="{{ route('projects.show', $funding->project) }}">{{ $funding->project->title }}</a>
@@ -88,7 +83,7 @@
             @empty
             <p class="py-2 text-muted">Vous n'avez encore soutenu aucun projet. <a class="text-water underline" href="{{ route('projects.index') }}">Voir les projets</a></p>
             @endforelse
-            <div class="{{ $row }} border-b-0 font-bold"><span>Total</span><span class="font-mono">{{ \App\Models\Project::money($contributions->sum('amount')) }} TND</span></div>
+            <div class="line-item border-b-0 font-bold"><span>Total</span><span class="font-mono">{{ \App\Models\Project::money($contributions->sum('amount')) }} TND</span></div>
           </div>
 
           {{-- Préférences simulées : pas encore enregistrées --}}
@@ -97,7 +92,7 @@
             @foreach ([['Changement de statut de mes signalements', 'Statut', true], ['Coupures programmées dans ma commune', 'Coupures', true], ['Avancement des projets soutenus', 'Projets', false]] as [$label, $aria, $checked])
             <div @class(['flex items-center justify-between gap-4 py-3.5', 'border-b border-line' => ! $loop->last])>
               <span>{{ $label }}</span>
-              <label class="relative inline-block h-6 w-11 flex-none"><input class="peer sr-only" type="checkbox" @checked($checked) aria-label="{{ $aria }}"><span class="{{ $switch }}"></span></label>
+              <label class="relative inline-block h-[22px] w-10 flex-none"><input class="peer sr-only" type="checkbox" @checked($checked) aria-label="{{ $aria }}"><span class="switch-track"></span></label>
             </div>
             @endforeach
           </div>

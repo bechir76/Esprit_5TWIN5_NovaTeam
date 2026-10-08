@@ -11,13 +11,13 @@
 @endphp
 
 @section('content')
-<section data-page="incidents" class="stack">
+<section data-page="incidents" class="flex flex-col gap-3">
   <x-page-header title="Incidents">
-    <div class="row"><a class="btn btn-ghost" href="{{ route('admin.interventions.index') }}">Interventions</a><a class="btn btn-primary" href="{{ route('admin.incidents.create') }}">+ Créer un incident</a></div>
+    <div class="flex flex-wrap items-center gap-2.5"><a class="btn btn-ghost" href="{{ route('admin.interventions.index') }}">Interventions</a><a class="btn btn-primary" href="{{ route('admin.incidents.create') }}">+ Créer un incident</a></div>
   </x-page-header>
   <div class="card">
-    <form class="filters" method="GET" action="{{ route('admin.incidents.index') }}">
-      <input class="input grow" type="search" name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Référence, titre, adresse…" aria-label="Rechercher">
+    <form class="filter-bar" method="GET" action="{{ route('admin.incidents.index') }}">
+      <input class="input min-w-[200px] flex-1" type="search" name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Référence, titre, adresse…" aria-label="Rechercher">
       <select class="input" name="type" aria-label="Type" onchange="this.form.submit()">
         <option value="">Tous les types</option>
         @foreach (\App\Enums\IncidentType::cases() as $type)
@@ -48,34 +48,34 @@
       <a class="btn btn-ghost" href="{{ route('admin.incidents.index') }}">Réinitialiser</a>
       @endif
     </form>
-    <div class="table-wrap"><table><thead><tr><th>Incident</th><th>Type</th><th>Infrastructure · Zone</th><th>Gravité</th><th>Statut</th><th>Déclarant</th><th>Date</th><th></th></tr></thead><tbody>
+    <div class="overflow-x-auto"><table class="data-table"><thead><tr><th>Incident</th><th>Type</th><th>Infrastructure · Zone</th><th>Gravité</th><th>Statut</th><th>Déclarant</th><th>Date</th><th></th></tr></thead><tbody>
       @forelse ($incidents as $incident)
       <tr>
-        <td><span class="sev-bar" style="background:{{ $incident->severity->color() }}"></span><span style="display:inline-block;vertical-align:middle"><a href="{{ route('admin.incidents.show', $incident) }}" style="font-weight:600;text-decoration:none">{{ $incident->title }}</a><br><span class="mono muted" style="font-size:.76rem">{{ $incident->reference }}</span></span></td>
+        <td><span class="mr-2.5 inline-block h-7 w-1 rounded-[2px] align-middle" style="background:{{ $incident->severity->color() }}"></span><span class="inline-block align-middle"><a class="font-semibold" href="{{ route('admin.incidents.show', $incident) }}">{{ $incident->title }}</a><br><span class="font-mono text-muted text-[.76rem]">{{ $incident->reference }}</span></span></td>
         <td>{{ $incident->type->icon() }} {{ $incident->type->label() }}</td>
         <td>
           @if ($incident->infrastructure)
-          <a href="{{ route('admin.infrastructures.show', $incident->infrastructure) }}" style="color:inherit">{{ $incident->infrastructure->name }}</a><br><span class="muted" style="font-size:.78rem">{{ $incident->infrastructure->zone->name }}</span>
+          <a class="underline" href="{{ route('admin.infrastructures.show', $incident->infrastructure) }}">{{ $incident->infrastructure->name }}</a><br><span class="text-muted text-[.78rem]">{{ $incident->infrastructure->zone->name }}</span>
           @else
-          <span class="muted">—</span><br><span class="muted" style="font-size:.78rem">{{ $incident->address }}</span>
+          <span class="text-muted">—</span><br><span class="text-muted text-[.78rem]">{{ $incident->address }}</span>
           @endif
         </td>
         <td><x-status-badge :value="$incident->severity->label()" :variant="$incident->severity->badge()" dot /></td>
         <td><x-status-badge :value="$incident->status->label()" :variant="$incident->status->badge()" /></td>
-        <td class="muted">{{ $incident->user?->name ?? '—' }}</td>
-        <td class="mono" style="white-space:nowrap">{{ $incident->created_at->format('d/m H:i') }}</td>
-        <td><div class="acts">
-          <a class="act" href="{{ route('admin.incidents.show', $incident) }}" title="Voir">{!! $eye !!}</a>
-          <a class="act" href="{{ route('admin.incidents.edit', $incident) }}" title="Modifier">{!! $edit !!}</a>
-          <button class="act del" type="button" data-del="{{ $incident->reference }}" data-action="{{ route('admin.incidents.destroy', $incident) }}" title="Supprimer">{!! $trash !!}</button>
+        <td class="text-muted">{{ $incident->user?->name ?? '—' }}</td>
+        <td class="font-mono whitespace-nowrap">{{ $incident->created_at->format('d/m H:i') }}</td>
+        <td><div class="flex justify-end gap-1.5">
+          <a class="btn-icon" href="{{ route('admin.incidents.show', $incident) }}" title="Voir">{!! $eye !!}</a>
+          <a class="btn-icon" href="{{ route('admin.incidents.edit', $incident) }}" title="Modifier">{!! $edit !!}</a>
+          <button class="btn-icon btn-icon-danger" type="button" data-del="{{ $incident->reference }}" data-action="{{ route('admin.incidents.destroy', $incident) }}" title="Supprimer">{!! $trash !!}</button>
         </div></td>
       </tr>
       @empty
-      <tr><td colspan="8" class="muted" style="text-align:center;padding:28px">Aucun incident ne correspond à ces critères.</td></tr>
+      <tr><td colspan="8" class="text-muted text-center p-7">Aucun incident ne correspond à ces critères.</td></tr>
       @endforelse
     </tbody></table></div>
-    <div class="foot">
-      <span class="muted">@if ($incidents->total())Affichage {{ $incidents->firstItem() }} à {{ $incidents->lastItem() }} sur {{ $incidents->total() }}@else Aucun résultat @endif</span>
+    <div class="card-footer">
+      <span class="text-muted">@if ($incidents->total())Affichage {{ $incidents->firstItem() }} à {{ $incidents->lastItem() }} sur {{ $incidents->total() }}@else Aucun résultat @endif</span>
       {{ $incidents->onEachSide(1)->links('back.partials.pagination') }}
     </div>
   </div>

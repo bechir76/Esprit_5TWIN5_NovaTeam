@@ -267,7 +267,7 @@ class InfrastructureTest extends TestCase
         Infrastructure::factory()->critical()->create();
 
         $this->get(route('home'))->assertOk()
-            ->assertSeeInOrder(['<strong class="mono">6</strong>', 'infrastructures surveillées'], false);
+            ->assertSeeInOrder(['tabular-nums">6</strong>', 'infrastructures surveillées'], false);
 
         $this->actingAs($this->staff())->get(route('admin.dashboard'))->assertOk()
             ->assertSeeInOrder(['Ouvrages à risque', '3', 'dont 1 critique']);

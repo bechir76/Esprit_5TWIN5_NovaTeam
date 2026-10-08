@@ -12,13 +12,13 @@
 @endphp
 
 @section('content')
-<section data-page="projets" class="stack">
+<section data-page="projets" class="flex flex-col gap-3">
   <x-page-header title="Projets de rénovation">
     <a class="btn btn-primary" href="{{ route('admin.projects.create') }}">+ Nouveau projet</a>
   </x-page-header>
   <div class="card">
-    <form class="filters" method="GET" action="{{ route('admin.projects.index') }}">
-      <input class="input grow" type="search" name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Rechercher un projet…" aria-label="Rechercher">
+    <form class="filter-bar" method="GET" action="{{ route('admin.projects.index') }}">
+      <input class="input min-w-[200px] flex-1" type="search" name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Rechercher un projet…" aria-label="Rechercher">
       <select class="input" name="status" aria-label="Statut" onchange="this.form.submit()">
         <option value="">Tous les statuts</option>
         @foreach (\App\Enums\ProjectStatus::cases() as $status)
@@ -42,28 +42,28 @@
       <a class="btn btn-ghost" href="{{ route('admin.projects.index') }}">Réinitialiser</a>
       @endif
     </form>
-    <div class="table-wrap"><table><thead><tr><th>Projet</th><th>Infrastructure</th><th>Budget</th><th>Financement</th><th>Échéance</th><th>Statut</th><th></th></tr></thead><tbody>
+    <div class="overflow-x-auto"><table class="data-table"><thead><tr><th>Projet</th><th>Infrastructure</th><th>Budget</th><th>Financement</th><th>Échéance</th><th>Statut</th><th></th></tr></thead><tbody>
       @forelse ($projects as $project)
       <tr>
-        <td><a href="{{ route('admin.projects.show', $project) }}" style="text-decoration:none"><strong>{{ $project->title }}</strong></a><br><span class="muted" style="font-size:.78rem">{{ $project->category->label() }}@unless ($project->is_public) · non publié @endunless</span></td>
-        <td>@if ($project->infrastructure)<span class="mono" style="font-size:.8rem">{{ $project->infrastructure->code }}</span><br><span class="muted" style="font-size:.78rem">{{ $project->infrastructure->zone->name }}</span>@else<span class="muted">Multi-sites</span>@endif</td>
-        <td class="mono">{{ \App\Models\Project::money($project->target_budget) }} TND</td>
-        <td style="min-width:160px"><div class="progress"><span style="width:{{ $project->progress_percent }}%"></span></div><span class="mono muted" style="font-size:.76rem">{{ \App\Models\Project::money($project->collected_amount) }} · {{ $project->progress_percent }} %</span></td>
-        <td class="mono">{{ $project->end_date->format('d/m/Y') }}</td>
+        <td><a href="{{ route('admin.projects.show', $project) }}"><strong>{{ $project->title }}</strong></a><br><span class="text-muted text-[.78rem]">{{ $project->category->label() }}@unless ($project->is_public) · non publié @endunless</span></td>
+        <td>@if ($project->infrastructure)<span class="font-mono text-[.8rem]">{{ $project->infrastructure->code }}</span><br><span class="text-muted text-[.78rem]">{{ $project->infrastructure->zone->name }}</span>@else<span class="text-muted">Multi-sites</span>@endif</td>
+        <td class="font-mono">{{ \App\Models\Project::money($project->target_budget) }} TND</td>
+        <td class="min-w-[160px]"><div class="progress-track"><span class="progress-bar" style="width:{{ $project->progress_percent }}%"></span></div><span class="font-mono text-muted text-[.76rem]">{{ \App\Models\Project::money($project->collected_amount) }} · {{ $project->progress_percent }} %</span></td>
+        <td class="font-mono">{{ $project->end_date->format('d/m/Y') }}</td>
         <td><x-status-badge :value="$project->status->label()" :variant="$project->status->badge()" /></td>
-        <td><div class="acts">
-          <a class="act" href="{{ route('admin.fundings.index', ['projet' => $project->id]) }}" title="Financements">{!! $money !!}</a>
-          <a class="act" href="{{ route('admin.projects.show', $project) }}" title="Voir">{!! $eye !!}</a>
-          <a class="act" href="{{ route('admin.projects.edit', $project) }}" title="Modifier">{!! $edit !!}</a>
-          <button class="act del" type="button" data-del="{{ $project->title }}" data-action="{{ route('admin.projects.destroy', $project) }}" title="Supprimer">{!! $trash !!}</button>
+        <td><div class="flex justify-end gap-1.5">
+          <a class="btn-icon" href="{{ route('admin.fundings.index', ['projet' => $project->id]) }}" title="Financements">{!! $money !!}</a>
+          <a class="btn-icon" href="{{ route('admin.projects.show', $project) }}" title="Voir">{!! $eye !!}</a>
+          <a class="btn-icon" href="{{ route('admin.projects.edit', $project) }}" title="Modifier">{!! $edit !!}</a>
+          <button class="btn-icon btn-icon-danger" type="button" data-del="{{ $project->title }}" data-action="{{ route('admin.projects.destroy', $project) }}" title="Supprimer">{!! $trash !!}</button>
         </div></td>
       </tr>
       @empty
-      <tr><td colspan="7" class="muted" style="text-align:center;padding:28px">Aucun projet ne correspond à ces critères.</td></tr>
+      <tr><td colspan="7" class="text-muted text-center p-7">Aucun projet ne correspond à ces critères.</td></tr>
       @endforelse
     </tbody></table></div>
-    <div class="foot">
-      <span class="muted">@if ($projects->total())Affichage {{ $projects->firstItem() }} à {{ $projects->lastItem() }} sur {{ $projects->total() }}@else Aucun résultat @endif</span>
+    <div class="card-footer">
+      <span class="text-muted">@if ($projects->total())Affichage {{ $projects->firstItem() }} à {{ $projects->lastItem() }} sur {{ $projects->total() }}@else Aucun résultat @endif</span>
       {{ $projects->onEachSide(1)->links('back.partials.pagination') }}
     </div>
   </div>

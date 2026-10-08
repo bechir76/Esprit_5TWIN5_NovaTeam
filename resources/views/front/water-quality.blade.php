@@ -4,23 +4,23 @@
 
 @section('content')
 <section data-page="water-quality">
-  <div style="background:var(--hero);color:#fff;padding-block:44px 52px">
-    <div class="wrap">
-      <span class="eyebrow" style="color:#7FD8FF">Surveillance en temps réel</span>
-      <h1 style="margin-top:12px;margin-bottom:14px">Qualité de l'eau potable</h1>
-      <p style="color:#C7DDEB;max-width:56ch;font-size:1.05rem">
+  <div class="bg-hero pt-11 pb-[52px] text-white">
+    <div class="mx-auto max-w-[1200px] px-5">
+      <span class="kicker text-[#7FD8FF]">Surveillance en temps réel</span>
+      <h1 class="mt-3 mb-3.5">Qualité de l'eau potable</h1>
+      <p class="text-[#C7DDEB] max-w-[56ch] text-[1.05rem]">
         Dernières analyses validées par zone. Les paramètres sont comparés aux seuils réglementaires en vigueur.
       </p>
     </div>
   </div>
 
-  <div class="wrap" style="padding-block:40px 64px">
+  <div class="mx-auto max-w-[1200px] px-5 pt-10 pb-16">
 
     {{-- Filtre par zone --}}
-    <form method="GET" action="{{ route('water-quality') }}" style="margin-bottom:28px">
-      <div class="row" style="gap:10px;flex-wrap:wrap">
-        <label for="zoneFilter" style="font-weight:600;font-size:.9rem">Filtrer par zone&nbsp;:</label>
-        <select class="input" id="zoneFilter" name="zone" style="width:auto;min-width:200px"
+    <form class="mb-7" method="GET" action="{{ route('water-quality') }}">
+      <div class="flex items-center gap-2.5 flex-wrap">
+        <label class="font-semibold text-[.9rem]" for="zoneFilter">Filtrer par zone&nbsp;:</label>
+        <select class="input w-auto min-w-[200px]" id="zoneFilter" name="zone"
           onchange="this.form.submit()" aria-label="Choisir une zone">
           <option value="">Toutes les zones</option>
           @foreach ($zones as $zone)
@@ -45,30 +45,30 @@
       $allOk = $rate === 100;
     @endphp
 
-    <div class="card" style="margin-bottom:20px;overflow:hidden">
+    <div class="card mb-5 overflow-hidden">
       {{-- En-tête de la zone --}}
-      <div style="background:var(--surface-2);padding:16px 22px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line)">
+      <div class="flex flex-wrap items-start justify-between gap-3 border-b border-line bg-surface-2 px-[22px] py-4">
         <div>
-          <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-family:var(--f-mono)">
+          <div class="font-mono text-xs tracking-[.08em] text-muted uppercase">
             {{ $zone->name ?? 'Zone inconnue' }}
           </div>
-          <div style="font-weight:700;font-size:1.05rem;margin-top:3px">
+          <div class="font-bold text-[1.05rem] mt-[3px]">
             {{ $analysis->infrastructure->name }}
-            <span style="font-weight:400;color:var(--muted);font-size:.88rem">· {{ $analysis->infrastructure->type->label() }}</span>
+            <span class="font-normal text-muted text-[.88rem]">· {{ $analysis->infrastructure->type->label() }}</span>
           </div>
-          <div style="font-size:.82rem;color:var(--muted);margin-top:4px">
+          <div class="text-[.82rem] text-muted mt-1">
             Prélèvement du {{ $analysis->sampled_at->format('d/m/Y H:i') }}
             @if ($analysis->sampling_point) · {{ $analysis->sampling_point }} @endif
             @if ($analysis->laboratory) · {{ $analysis->laboratory }} @endif
           </div>
         </div>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div class="flex gap-2.5 items-center flex-wrap">
           @if ($rate !== null)
-          <div style="text-align:right">
-            <div style="font-family:var(--f-mono);font-size:1.4rem;font-weight:800;line-height:1;color:{{ $allOk ? 'var(--teal)' : 'var(--crit)' }}">
+          <div class="text-right">
+            <div @class(['font-mono text-[1.4rem] leading-none font-extrabold', 'text-teal' => $allOk, 'text-crit' => ! $allOk])>
               {{ $rate }}&thinsp;%
             </div>
-            <div style="font-size:.76rem;color:var(--muted)">conformité</div>
+            <div class="text-[.76rem] text-muted">conformité</div>
           </div>
           @endif
           @if ($allOk)
@@ -80,25 +80,25 @@
       </div>
 
       {{-- Grille des 4 paramètres principaux --}}
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0;border-bottom:1px solid var(--line)">
+      <div class="grid grid-fit-[200px] border-b border-line">
         @foreach ($mainParams as $param)
         @php
           $m        = $byParam->get($param->value);
           $compliant = $m ? $m->is_compliant : null;
           $valStr   = $m ? rtrim(rtrim(number_format((float) $m->value, 4, ',', ''), '0'), ',') : null;
-          $bgColor  = $compliant === true ? 'var(--ok-soft)' : ($compliant === false ? 'var(--crit-soft)' : 'var(--surface)');
-          $fgColor  = $compliant === true ? 'var(--ok-fg)' : ($compliant === false ? 'var(--crit-fg)' : 'var(--muted)');
+          $bgClass  = $compliant === true ? 'bg-ok-soft' : ($compliant === false ? 'bg-crit-soft' : 'bg-surface');
+          $fgClass  = $compliant === true ? 'text-ok-fg' : ($compliant === false ? 'text-crit-fg' : 'text-muted');
         @endphp
-        <div style="padding:18px 20px;border-right:1px solid var(--line);background:{{ $bgColor }}">
-          <div style="font-size:.78rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">
+        <div class="border-r border-line px-5 py-[18px] {{ $bgClass }}">
+          <div class="mb-1.5 text-[.78rem] font-semibold tracking-[.06em] text-muted uppercase">
             {{ $param->label() }}
           </div>
           @if ($valStr !== null)
-          <div style="font-family:var(--f-mono);font-size:1.3rem;font-weight:700;color:{{ $fgColor }};line-height:1">
-            {{ $valStr }}@if ($param->unit()) <small style="font-size:.75rem;font-weight:400"> {{ $param->unit() }}</small>@endif
+          <div class="font-mono text-[1.3rem] leading-none font-bold {{ $fgClass }}">
+            {{ $valStr }}@if ($param->unit()) <small class="text-[.75rem] font-normal"> {{ $param->unit() }}</small>@endif
           </div>
-          <div style="font-size:.76rem;color:var(--muted);margin-top:4px">{{ $param->thresholdHint() }}</div>
-          <div style="margin-top:8px">
+          <div class="text-[.76rem] text-muted mt-1">{{ $param->thresholdHint() }}</div>
+          <div class="mt-2">
             @if ($compliant)
               <span class="badge b-ok">Conforme</span>
             @else
@@ -106,7 +106,7 @@
             @endif
           </div>
           @else
-          <div style="color:var(--muted);font-size:.9rem">Non mesuré</div>
+          <div class="text-muted text-[.9rem]">Non mesuré</div>
           @endif
         </div>
         @endforeach
@@ -114,13 +114,13 @@
 
       {{-- Barre de conformité globale + lien --}}
       @if ($rate !== null)
-      <div style="padding:14px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-        <div style="flex:1;min-width:120px">
-          <div style="height:6px;border-radius:3px;background:var(--line);overflow:hidden">
-            <div style="height:100%;border-radius:3px;background:{{ $allOk ? 'var(--teal)' : 'var(--crit)' }};width:{{ $rate }}%"></div>
+      <div class="flex flex-wrap items-center gap-3.5 px-[22px] py-3.5">
+        <div class="flex-1 min-w-[120px]">
+          <div class="h-1.5 overflow-hidden rounded-[3px] bg-line">
+            <div @class(['h-full rounded-[3px]', 'bg-teal' => $allOk, 'bg-crit' => ! $allOk]) style="width:{{ $rate }}%"></div>
           </div>
         </div>
-        <span style="font-size:.82rem;color:var(--muted);white-space:nowrap">
+        <span class="text-[.82rem] text-muted whitespace-nowrap">
           {{ $analysis->measurements->where('is_compliant', true)->count() }}
           / {{ $analysis->measurements->count() }} paramètres conformes
         </span>
@@ -129,8 +129,8 @@
     </div>
 
     @empty
-    <div style="text-align:center;padding:48px;color:var(--muted)">
-      <p style="font-size:1.1rem;margin-bottom:8px">Aucune analyse validée disponible.</p>
+    <div class="text-center p-12 text-muted">
+      <p class="text-[1.1rem] mb-2">Aucune analyse validée disponible.</p>
       <p>Les résultats apparaissent dès qu'une analyse est validée par le laboratoire.</p>
     </div>
     @endforelse

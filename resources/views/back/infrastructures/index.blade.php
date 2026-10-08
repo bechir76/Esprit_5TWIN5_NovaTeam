@@ -11,13 +11,13 @@
 @endphp
 
 @section('content')
-<section data-page="infras" class="stack">
+<section data-page="infras" class="flex flex-col gap-3">
   <x-page-header title="Infrastructures">
-    <div class="row"><a class="btn btn-ghost" href="{{ route('admin.zones.index') }}">Zones</a><a class="btn btn-primary" href="{{ route('admin.infrastructures.create') }}">+ Ajouter</a></div>
+    <div class="flex flex-wrap items-center gap-2.5"><a class="btn btn-ghost" href="{{ route('admin.zones.index') }}">Zones</a><a class="btn btn-primary" href="{{ route('admin.infrastructures.create') }}">+ Ajouter</a></div>
   </x-page-header>
   <div class="card">
-    <form class="filters" method="GET" action="{{ route('admin.infrastructures.index') }}">
-      <input class="input grow" type="search" name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Nom, code ouvrage…" aria-label="Rechercher">
+    <form class="filter-bar" method="GET" action="{{ route('admin.infrastructures.index') }}">
+      <input class="input min-w-[200px] flex-1" type="search" name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Nom, code ouvrage…" aria-label="Rechercher">
       <select class="input" name="type" aria-label="Type" onchange="this.form.submit()">
         <option value="">Tous les types</option>
         @foreach (\App\Enums\InfrastructureType::cases() as $type)
@@ -41,28 +41,28 @@
       <a class="btn btn-ghost" href="{{ route('admin.infrastructures.index') }}">Réinitialiser</a>
       @endif
     </form>
-    <div class="table-wrap"><table><thead><tr><th>Code</th><th>Nom</th><th>Type</th><th>Zone</th><th>Capacité</th><th>État</th><th>Dernière inspection</th><th></th></tr></thead><tbody>
+    <div class="overflow-x-auto"><table class="data-table"><thead><tr><th>Code</th><th>Nom</th><th>Type</th><th>Zone</th><th>Capacité</th><th>État</th><th>Dernière inspection</th><th></th></tr></thead><tbody>
       @forelse ($infrastructures as $infrastructure)
       <tr>
-        <td class="mono" style="font-size:.8rem">{{ $infrastructure->code }}</td>
-        <td><a href="{{ route('admin.infrastructures.show', $infrastructure) }}" style="text-decoration:none"><strong>{{ $infrastructure->name }}</strong></a>@unless ($infrastructure->is_public)<br><span class="muted" style="font-size:.76rem">Masquée sur la carte publique</span>@endunless</td>
+        <td class="font-mono text-[.8rem]">{{ $infrastructure->code }}</td>
+        <td><a href="{{ route('admin.infrastructures.show', $infrastructure) }}"><strong>{{ $infrastructure->name }}</strong></a>@unless ($infrastructure->is_public)<br><span class="text-muted text-[.76rem]">Masquée sur la carte publique</span>@endunless</td>
         <td>{{ $infrastructure->type->label() }}</td>
-        <td><a href="{{ route('admin.zones.show', $infrastructure->zone) }}" style="color:inherit">{{ $infrastructure->zone->name }}</a></td>
-        <td class="mono">{{ $infrastructure->formattedCapacity() }}</td>
+        <td><a class="underline" href="{{ route('admin.zones.show', $infrastructure->zone) }}">{{ $infrastructure->zone->name }}</a></td>
+        <td class="font-mono">{{ $infrastructure->formattedCapacity() }}</td>
         <td><x-status-badge :value="$infrastructure->status->label()" :variant="$infrastructure->status->badge()" dot /></td>
-        <td class="mono">{{ $infrastructure->last_inspection_at?->format('d/m/Y') ?? '—' }}</td>
-        <td><div class="acts">
-          <a class="act" href="{{ route('admin.infrastructures.show', $infrastructure) }}" title="Voir">{!! $eye !!}</a>
-          <a class="act" href="{{ route('admin.infrastructures.edit', $infrastructure) }}" title="Modifier">{!! $edit !!}</a>
-          <button class="act del" type="button" data-del="{{ $infrastructure->name }}" data-action="{{ route('admin.infrastructures.destroy', $infrastructure) }}" title="Supprimer">{!! $trash !!}</button>
+        <td class="font-mono">{{ $infrastructure->last_inspection_at?->format('d/m/Y') ?? '—' }}</td>
+        <td><div class="flex justify-end gap-1.5">
+          <a class="btn-icon" href="{{ route('admin.infrastructures.show', $infrastructure) }}" title="Voir">{!! $eye !!}</a>
+          <a class="btn-icon" href="{{ route('admin.infrastructures.edit', $infrastructure) }}" title="Modifier">{!! $edit !!}</a>
+          <button class="btn-icon btn-icon-danger" type="button" data-del="{{ $infrastructure->name }}" data-action="{{ route('admin.infrastructures.destroy', $infrastructure) }}" title="Supprimer">{!! $trash !!}</button>
         </div></td>
       </tr>
       @empty
-      <tr><td colspan="8" class="muted" style="text-align:center;padding:28px">Aucune infrastructure ne correspond à ces critères.</td></tr>
+      <tr><td colspan="8" class="text-muted text-center p-7">Aucune infrastructure ne correspond à ces critères.</td></tr>
       @endforelse
     </tbody></table></div>
-    <div class="foot">
-      <span class="muted">@if ($infrastructures->total())Affichage {{ $infrastructures->firstItem() }} à {{ $infrastructures->lastItem() }} sur {{ $infrastructures->total() }}@else Aucun résultat @endif</span>
+    <div class="card-footer">
+      <span class="text-muted">@if ($infrastructures->total())Affichage {{ $infrastructures->firstItem() }} à {{ $infrastructures->lastItem() }} sur {{ $infrastructures->total() }}@else Aucun résultat @endif</span>
       {{ $infrastructures->onEachSide(1)->links('back.partials.pagination') }}
     </div>
   </div>

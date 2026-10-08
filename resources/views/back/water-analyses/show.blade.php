@@ -14,13 +14,13 @@
 @endphp
 
 @section('content')
-<section data-page="water-analysis" class="stack">
+<section data-page="water-analysis" class="flex flex-col gap-3">
 
   <x-page-header :title="$analysis->reference" :crumb="'Console / Qualité eau / '.$analysis->reference">
     <x-slot:badges>
       <x-status-badge :value="$analysis->status->label()" :variant="$analysis->status->badge()" dot />
     </x-slot:badges>
-    <div class="row">
+    <div class="flex flex-wrap items-center gap-2.5">
       <a class="btn btn-ghost" href="{{ route('admin.water-analyses.edit', $analysis) }}">Modifier</a>
       <button class="btn btn-danger" type="button"
         data-del="{{ $analysis->reference }}"
@@ -29,52 +29,52 @@
   </x-page-header>
 
   {{-- KPIs --}}
-  <div class="grid kpis">
+  <div class="grid gap-[18px] grid-fit-[170px]">
     <x-kpi-card label="Mesures" :value="$analysis->measurements->count()" />
     <x-kpi-card label="Conformes"
       :value="$analysis->measurements->where('is_compliant', true)->count()"
-      color="var(--teal)" />
+      color="var(--color-teal)" />
     <x-kpi-card label="Non conformes"
       :value="$analysis->measurements->where('is_compliant', false)->count()"
-      :color="$analysis->measurements->where('is_compliant', false)->count() > 0 ? 'var(--crit)' : 'var(--teal)'" />
+      :color="$analysis->measurements->where('is_compliant', false)->count() > 0 ? 'var(--color-crit)' : 'var(--color-teal)'" />
     <x-kpi-card label="Taux de conformité"
       :value="$rate !== null ? $rate.' %' : '—'"
-      :color="$rate === 100 ? 'var(--teal)' : ($rate !== null ? 'var(--crit)' : 'var(--water)')" />
+      :color="$rate === 100 ? 'var(--color-teal)' : ($rate !== null ? 'var(--color-crit)' : 'var(--color-water)')" />
   </div>
 
-  <div class="detail">
-    <div class="stack" style="gap:18px">
+  <div class="grid items-start gap-[18px] min-[1101px]:grid-cols-[minmax(0,1fr)_340px]">
+    <div class="flex flex-col gap-[18px]">
 
       {{-- Fiche --}}
-      <div class="card card-b stack" style="gap:16px">
-        <div class="kv">
-          <div><span class="label">Infrastructure</span>
-            <a href="{{ route('admin.infrastructures.show', $analysis->infrastructure) }}" style="color:var(--info-fg)">
+      <div class="card p-[18px] flex flex-col gap-4">
+        <div class="grid grid-fit-[170px] gap-4">
+          <div><span class="caption block">Infrastructure</span>
+            <a class="text-info-fg underline" href="{{ route('admin.infrastructures.show', $analysis->infrastructure) }}">
               {{ $analysis->infrastructure->name }}
             </a>
           </div>
-          <div><span class="label">Zone</span><span>{{ $analysis->infrastructure->zone->name ?? '—' }}</span></div>
-          <div><span class="label">Point de prélèvement</span><span>{{ $analysis->sampling_point }}</span></div>
-          <div><span class="label">Date du prélèvement</span><span class="mono">{{ $analysis->sampled_at->format('d/m/Y H:i') }}</span></div>
-          <div><span class="label">Laboratoire</span><span>{{ $analysis->laboratory ?? '—' }}</span></div>
-          <div><span class="label">Technicien</span><span>{{ $analysis->sampledBy?->name ?? '—' }}</span></div>
-          <div><span class="label">Créée le</span><span class="mono">{{ $analysis->created_at->format('d/m/Y H:i') }}</span></div>
+          <div><span class="caption block">Zone</span><span>{{ $analysis->infrastructure->zone->name ?? '—' }}</span></div>
+          <div><span class="caption block">Point de prélèvement</span><span>{{ $analysis->sampling_point }}</span></div>
+          <div><span class="caption block">Date du prélèvement</span><span class="font-mono">{{ $analysis->sampled_at->format('d/m/Y H:i') }}</span></div>
+          <div><span class="caption block">Laboratoire</span><span>{{ $analysis->laboratory ?? '—' }}</span></div>
+          <div><span class="caption block">Technicien</span><span>{{ $analysis->sampledBy?->name ?? '—' }}</span></div>
+          <div><span class="caption block">Créée le</span><span class="font-mono">{{ $analysis->created_at->format('d/m/Y H:i') }}</span></div>
         </div>
         @if ($analysis->notes)
-        <div><span class="label">Notes</span><p style="margin-top:6px;max-width:70ch">{{ $analysis->notes }}</p></div>
+        <div><span class="caption block">Notes</span><p class="mt-1.5 max-w-[70ch]">{{ $analysis->notes }}</p></div>
         @endif
       </div>
 
       {{-- Tableau des mesures --}}
       <div class="card">
-        <div class="card-h">
+        <div class="card-header">
           <h2>Mesures</h2>
           @if ($hasAvailable)
           <a class="btn btn-primary btn-sm" href="{{ route('admin.measurements.create', $analysis) }}">+ Ajouter une mesure</a>
           @endif
         </div>
-        <div class="table-wrap">
-          <table>
+        <div class="overflow-x-auto">
+          <table class="data-table">
             <thead>
               <tr>
                 <th>Paramètre</th>
@@ -94,10 +94,10 @@
               @endphp
               <tr>
                 <td><strong>{{ $param->label() }}</strong></td>
-                <td class="mono">
-                  {{ $val }}@if ($param->unit()) <small class="muted"> {{ $param->unit() }}</small>@endif
+                <td class="font-mono">
+                  {{ $val }}@if ($param->unit()) <small class="text-muted"> {{ $param->unit() }}</small>@endif
                 </td>
-                <td class="muted" style="font-size:.84rem">{{ $param->thresholdHint() }}</td>
+                <td class="text-muted text-[.84rem]">{{ $param->thresholdHint() }}</td>
                 <td>
                   @if ($measurement->is_compliant)
                     <x-status-badge value="Conforme" variant="b-ok" dot />
@@ -106,9 +106,9 @@
                   @endif
                 </td>
                 <td>
-                  <div class="acts">
-                    <a class="act" href="{{ route('admin.measurements.edit', $measurement) }}" title="Modifier">{!! $edit !!}</a>
-                    <button class="act del" type="button"
+                  <div class="flex justify-end gap-1.5">
+                    <a class="btn-icon" href="{{ route('admin.measurements.edit', $measurement) }}" title="Modifier">{!! $edit !!}</a>
+                    <button class="btn-icon btn-icon-danger" type="button"
                       data-del="{{ $param->label() }}"
                       data-action="{{ route('admin.measurements.destroy', $measurement) }}"
                       title="Supprimer">{!! $trash !!}</button>
@@ -117,10 +117,10 @@
               </tr>
               @empty
               <tr>
-                <td colspan="5" class="muted" style="text-align:center;padding:28px">
+                <td colspan="5" class="text-muted text-center p-7">
                   Aucune mesure enregistrée.
                   @if ($hasAvailable)
-                  <a href="{{ route('admin.measurements.create', $analysis) }}">Ajouter la première mesure →</a>
+                  <a class="underline" href="{{ route('admin.measurements.create', $analysis) }}">Ajouter la première mesure →</a>
                   @endif
                 </td>
               </tr>
@@ -133,34 +133,34 @@
     </div>
 
     {{-- Colonne latérale --}}
-    <aside class="stack" style="gap:18px">
+    <aside class="flex flex-col gap-[18px]">
 
       @if ($rate !== null)
-      <div class="card card-b stack"><h2>Conformité globale</h2>
+      <div class="card p-[18px] flex flex-col gap-3"><h2>Conformité globale</h2>
         <div>
-          <div class="row between" style="margin-bottom:6px">
-            <span class="muted" style="font-size:.84rem">
+          <div class="flex flex-wrap items-center gap-2.5 justify-between mb-1.5">
+            <span class="text-muted text-[.84rem]">
               {{ $analysis->measurements->where('is_compliant', true)->count() }}
               / {{ $analysis->measurements->count() }} paramètres
             </span>
-            <span class="mono" style="font-weight:700">{{ $rate }}&thinsp;%</span>
+            <span class="font-mono font-bold">{{ $rate }}&thinsp;%</span>
           </div>
-          <div style="height:10px;border-radius:5px;background:var(--line);overflow:hidden">
-            <div style="height:100%;border-radius:5px;background:{{ $rate===100 ? 'var(--teal)' : ($rate>=60 ? 'var(--warn)' : 'var(--crit)') }};width:{{ $rate }}%;transition:width .4s"></div>
+          <div class="h-[10px] rounded-[5px] bg-line overflow-hidden">
+            <div @class(['h-full rounded-[5px] transition-[width] duration-400', 'bg-teal' => $rate === 100, 'bg-warn' => $rate < 100 && $rate >= 60, 'bg-crit' => $rate < 60]) style="width:{{ $rate }}%"></div>
           </div>
         </div>
       </div>
       @endif
 
-      <div class="card card-b stack"><h2>Infrastructure</h2>
-        <div class="kv" style="gap:8px">
-          <div><span class="label">Code</span><span class="mono">{{ $analysis->infrastructure->code }}</span></div>
-          <div><span class="label">Type</span><span>{{ $analysis->infrastructure->type->label() }}</span></div>
-          <div><span class="label">État</span>
+      <div class="card p-[18px] flex flex-col gap-3"><h2>Infrastructure</h2>
+        <div class="grid grid-fit-[170px] gap-2">
+          <div><span class="caption block">Code</span><span class="font-mono">{{ $analysis->infrastructure->code }}</span></div>
+          <div><span class="caption block">Type</span><span>{{ $analysis->infrastructure->type->label() }}</span></div>
+          <div><span class="caption block">État</span>
             <x-status-badge :value="$analysis->infrastructure->status->label()" :variant="$analysis->infrastructure->status->badge()" dot />
           </div>
         </div>
-        <a class="btn btn-ghost" style="justify-content:center;margin-top:6px"
+        <a class="btn btn-ghost justify-center mt-1.5"
           href="{{ route('admin.infrastructures.show', $analysis->infrastructure) }}">Voir l'infrastructure</a>
       </div>
 

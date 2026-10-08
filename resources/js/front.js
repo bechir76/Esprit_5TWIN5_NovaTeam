@@ -52,14 +52,14 @@ if ($('mapSvg')) {
 
     sites.forEach((s, k) => {
         const [x, y] = project(s.lat, s.lng);
-        svg += `<g class="marker cursor-pointer" data-k="${k}" tabindex="0" role="button" aria-label="${esc(s.name)}"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="13" fill="${esc(s.color)}" opacity=".22"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7" fill="${esc(s.color)}" stroke="#fff" stroke-width="2.5"/></g>`;
+        svg += `<g class="group cursor-pointer" data-marker data-k="${k}" tabindex="0" role="button" aria-label="${esc(s.name)}"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" class="transition-all group-hover:[r:16px]" r="13" fill="${esc(s.color)}" opacity=".22"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7" fill="${esc(s.color)}" stroke="#fff" stroke-width="2.5"/></g>`;
     });
 
     fill('mapSvg', svg);
 }
 
 const pop = $('mapPop');
-const row = 'flex justify-between border-b border-line py-2.5 text-[.92rem]';
+const row = 'line-item';
 
 function showSite(k) {
     const s = sites[k];
@@ -82,11 +82,11 @@ if (pop) {
 }
 
 on('mapSvg', 'click', (e) => {
-    const g = e.target.closest('.marker');
+    const g = e.target.closest('[data-marker]');
     if (g) showSite(+g.dataset.k);
 });
 on('mapSvg', 'keydown', (e) => {
-    const g = e.target.closest('.marker');
+    const g = e.target.closest('[data-marker]');
     if (g && e.key === 'Enter') showSite(+g.dataset.k);
 });
 

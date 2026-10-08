@@ -144,4 +144,123 @@
     .b-crit { @apply bg-crit-soft text-crit-fg; }
     .b-info { @apply bg-water-soft text-info-fg; }
     .b-mute { @apply bg-surface-2 text-muted; }
+
+    /* Petit libellé en capitales (fiches, KPI, en-têtes) */
+    .caption {
+        @apply font-mono text-[.7rem] tracking-[.08em] text-muted uppercase;
+    }
+
+    /* Cartes du back office : en-tête (titre + action) et pied (compteur + pagination) */
+    .card-header {
+        @apply flex flex-wrap items-center justify-between gap-2.5 border-b border-line px-[18px] py-4;
+    }
+
+    .card-footer {
+        @apply flex flex-wrap items-center justify-between gap-2.5 border-t border-line px-[18px] py-3 text-[.84rem];
+    }
+
+    /* Barre de filtres d'une liste : les champs gardent leur largeur naturelle */
+    .filter-bar {
+        @apply flex flex-wrap gap-2.5 border-b border-line px-[18px] py-3.5;
+
+        & .input {
+            @apply w-auto min-w-[150px];
+        }
+    }
+
+    /* Tableaux de données (à placer dans un conteneur overflow-x-auto) */
+    .data-table {
+        @apply w-full min-w-[760px] border-collapse;
+
+        & th {
+            @apply bg-surface-2 px-4 py-[11px] text-left text-[.7rem] font-semibold tracking-[.07em] whitespace-nowrap text-muted uppercase;
+        }
+
+        & td {
+            @apply border-t border-line px-4 py-3 align-middle;
+        }
+
+        & tbody tr:hover td {
+            @apply bg-surface-2/45;
+        }
+    }
+
+    /* Boutons d'action carrés des tableaux (voir, modifier, supprimer) */
+    .btn-icon {
+        @apply inline-grid size-[30px] cursor-pointer place-items-center rounded-[7px] border border-line bg-surface text-muted hover:bg-surface-2 hover:text-ink;
+    }
+
+    .btn-icon-danger {
+        @apply hover:border-crit hover:text-crit;
+    }
+
+    /* Section d'un formulaire en carte : séparée de la précédente par un filet */
+    .form-section {
+        @apply flex flex-col gap-4 p-5;
+
+        & + & {
+            @apply border-t border-line;
+        }
+    }
+
+    .callout {
+        @apply flex flex-wrap gap-2.5 rounded-[9px] px-3.5 py-3 text-[.86rem];
+    }
+
+    .callout-crit { @apply bg-crit-soft text-crit-fg; }
+    .callout-info { @apply bg-water-soft text-info-fg; }
+
+    /* Barre de progression : <div class="progress-track"><span class="progress-bar" style="width:…%"></span></div> */
+    .progress-track {
+        @apply h-2 overflow-hidden rounded-full bg-surface-2;
+    }
+
+    .progress-bar {
+        @apply block h-full rounded-full bg-linear-to-r from-water to-teal;
+    }
+
+    /* Interrupteur : <label class="relative inline-block h-[22px] w-10"><input class="peer sr-only"><span class="switch-track"></span></label> */
+    .switch-track {
+        @apply absolute inset-0 cursor-pointer rounded-full bg-line transition peer-checked:bg-teal peer-focus-visible:outline-3 peer-focus-visible:outline-water;
+        @apply before:absolute before:top-[3px] before:left-[3px] before:size-4 before:rounded-full before:bg-white before:transition before:content-[''] peer-checked:before:translate-x-[18px];
+    }
+
+    /* Toast du back office (partial toasts et back.js) : bordure gauche teal (succès) ou crit (erreur) */
+    .toast-card {
+        @apply min-w-[260px] max-w-[360px] rounded-[9px] border border-l-4 border-line bg-surface px-4 py-3 text-[.88rem] shadow-toast;
+    }
+
+    /* Ligne libellé / valeur (budgets, contributions, popup de la carte) */
+    .line-item {
+        @apply flex justify-between gap-3 border-b border-line py-2.5 text-[.92rem];
+    }
+
+    /* Tuile de choix (radio) : <input class="sr-only" type="radio"><label class="choice-tile"> */
+    .choice-tile {
+        @apply cursor-pointer rounded-[9px] border border-line bg-surface p-3 text-center text-[.88rem] font-semibold;
+        @apply [input:checked+&]:border-water [input:checked+&]:bg-water-soft [input:focus-visible+&]:outline-3 [input:focus-visible+&]:outline-water;
+    }
+
+    /* Chronologie verticale : .timeline > .timeline-item(.is-done | .is-now) */
+    .timeline {
+        @apply relative pl-[22px] before:absolute before:top-1.5 before:bottom-1.5 before:left-1.5 before:w-0.5 before:bg-line before:content-[''];
+    }
+
+    .timeline-item {
+        @apply relative pb-4 text-[.86rem] last:pb-0;
+        @apply before:absolute before:top-1 before:-left-[21px] before:size-3 before:rounded-full before:border-2 before:border-water before:bg-surface before:content-[''];
+
+        &.is-done {
+            @apply before:border-teal before:bg-teal;
+        }
+
+        &.is-now {
+            @apply before:border-water before:bg-water before:shadow-[0_0_0_4px_var(--color-water-soft)];
+        }
+    }
+}
+
+/* Grille adaptative : grid-fit-[320px] = autant de colonnes de 320px min. que possible, une seule sur petit écran */
+@utility grid-fit-* {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, --value([length])), 1fr));
 }

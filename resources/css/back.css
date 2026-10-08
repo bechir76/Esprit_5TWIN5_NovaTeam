@@ -1,6 +1,5 @@
 /* Console de gestion (layouts/back/app et back/auth) : thème commun + composants aux dimensions du back */
 @import './app.css';
-@import './legacy/back-modules.css';
 
 @layer base {
     html, body {

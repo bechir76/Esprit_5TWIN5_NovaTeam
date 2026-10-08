@@ -10,29 +10,29 @@
 @endphp
 
 @section('content')
-<section data-page="water-analyses" class="stack">
+<section data-page="water-analyses" class="flex flex-col gap-3">
 
   <x-page-header title="Qualité de l'eau">
-    <div class="row">
+    <div class="flex flex-wrap items-center gap-2.5">
       <a class="btn btn-ghost" href="{{ route('admin.measurements.index') }}">Mesures non conformes</a>
       <a class="btn btn-primary" href="{{ route('admin.water-analyses.create') }}">+ Nouvelle analyse</a>
     </div>
   </x-page-header>
 
   {{-- KPIs réels --}}
-  <div class="grid kpis">
+  <div class="grid gap-[18px] grid-fit-[170px]">
     <x-kpi-card
       label="Analyses ce mois"
       :value="$kpis['this_month']"
-      color="var(--water)" />
+      color="var(--color-water)" />
     <x-kpi-card
       label="Taux de conformité global"
       :value="$kpis['compliance_rate'] !== null ? $kpis['compliance_rate'].' %' : '—'"
-      :color="$kpis['compliance_rate'] === 100 ? 'var(--teal)' : ($kpis['compliance_rate'] !== null && $kpis['compliance_rate'] < 90 ? 'var(--crit)' : 'var(--teal)')" />
+      :color="$kpis['compliance_rate'] === 100 ? 'var(--color-teal)' : ($kpis['compliance_rate'] !== null && $kpis['compliance_rate'] < 90 ? 'var(--color-crit)' : 'var(--color-teal)')" />
     <x-kpi-card
       label="Analyses non conformes"
       :value="$kpis['non_compliant']"
-      :color="$kpis['non_compliant'] > 0 ? 'var(--crit)' : 'var(--teal)'" />
+      :color="$kpis['non_compliant'] > 0 ? 'var(--color-crit)' : 'var(--color-teal)'" />
     <x-kpi-card
       label="Dernière analyse"
       :value="$kpis['last_analysis'] ? $kpis['last_analysis']->sampled_at->format('d/m/Y') : '—'"
@@ -40,8 +40,8 @@
   </div>
 
   <div class="card">
-    <form class="filters" method="GET" action="{{ route('admin.water-analyses.index') }}">
-      <input class="input grow" type="search" name="q" value="{{ $filters['q'] ?? '' }}"
+    <form class="filter-bar" method="GET" action="{{ route('admin.water-analyses.index') }}">
+      <input class="input min-w-[200px] flex-1" type="search" name="q" value="{{ $filters['q'] ?? '' }}"
         placeholder="Référence, point de prélèvement, laboratoire…" aria-label="Rechercher">
 
       <select class="input" name="zone" aria-label="Zone" onchange="this.form.submit()">
@@ -79,8 +79,8 @@
       @endif
     </form>
 
-    <div class="table-wrap">
-      <table>
+    <div class="overflow-x-auto">
+      <table class="data-table">
         <thead>
           <tr>
             <th>Référence</th>
@@ -104,52 +104,52 @@
             }
           @endphp
           <tr>
-            <td class="mono" style="font-size:.82rem">
-              <a href="{{ route('admin.water-analyses.show', $analysis) }}" style="text-decoration:none">
+            <td class="font-mono text-[.82rem]">
+              <a href="{{ route('admin.water-analyses.show', $analysis) }}">
                 <strong>{{ $analysis->reference }}</strong>
               </a>
             </td>
             <td>
-              <a href="{{ route('admin.infrastructures.show', $analysis->infrastructure) }}" style="color:inherit">
+              <a class="underline" href="{{ route('admin.infrastructures.show', $analysis->infrastructure) }}">
                 <strong>{{ $analysis->infrastructure->name }}</strong>
               </a>
-              <br><span class="muted" style="font-size:.78rem">{{ $analysis->infrastructure->zone->name ?? '—' }}</span>
+              <br><span class="text-muted text-[.78rem]">{{ $analysis->infrastructure->zone->name ?? '—' }}</span>
             </td>
-            <td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+            <td class="max-w-[180px] whitespace-nowrap overflow-hidden text-ellipsis">
               {{ $analysis->sampling_point }}
             </td>
-            <td class="mono" style="white-space:nowrap">{{ $analysis->sampled_at->format('d/m/Y H:i') }}</td>
-            <td>{{ $analysis->sampledBy?->name ?? '<span class="muted">—</span>' }}</td>
-            <td class="mono" style="text-align:center">
+            <td class="font-mono whitespace-nowrap">{{ $analysis->sampled_at->format('d/m/Y H:i') }}</td>
+            <td @class(['text-muted' => ! $analysis->sampledBy])>{{ $analysis->sampledBy?->name ?? '—' }}</td>
+            <td class="font-mono text-center">
               @if ($analysis->measurements_count > 0)
                 {{ $analysis->measurements_count }}
                 @if ($analysis->non_compliant_count > 0)
-                  <span class="badge b-crit" style="margin-left:4px">{{ $analysis->non_compliant_count }}✕</span>
+                  <span class="badge b-crit ml-1">{{ $analysis->non_compliant_count }}✕</span>
                 @endif
               @else
-                <span class="muted">—</span>
+                <span class="text-muted">—</span>
               @endif
             </td>
-            <td style="min-width:120px">
+            <td class="min-w-[120px]">
               @if ($rate !== null)
-              <div class="row" style="gap:6px;align-items:center;flex-wrap:nowrap">
-                <div style="flex:1;min-width:50px;height:6px;border-radius:3px;background:var(--line);overflow:hidden">
-                  <div style="height:100%;border-radius:3px;background:{{ $rate===100 ? 'var(--teal)' : ($rate>=60 ? 'var(--warn)' : 'var(--crit)') }};width:{{ $rate }}%"></div>
+              <div class="flex gap-1.5 items-center flex-nowrap">
+                <div class="flex-1 min-w-[50px] h-[6px] rounded-[3px] bg-line overflow-hidden">
+                  <div @class(['h-full rounded-[3px]', 'bg-teal' => $rate === 100, 'bg-warn' => $rate < 100 && $rate >= 60, 'bg-crit' => $rate < 60]) style="width:{{ $rate }}%"></div>
                 </div>
-                <span class="mono" style="font-size:.8rem;white-space:nowrap">{{ $rate }}&thinsp;%</span>
+                <span class="font-mono text-[.8rem] whitespace-nowrap">{{ $rate }}&thinsp;%</span>
               </div>
               @else
-              <span class="muted">—</span>
+              <span class="text-muted">—</span>
               @endif
             </td>
             <td>
               <x-status-badge :value="$analysis->status->label()" :variant="$analysis->status->badge()" dot />
             </td>
             <td>
-              <div class="acts">
-                <a class="act" href="{{ route('admin.water-analyses.show', $analysis) }}" title="Voir">{!! $eye !!}</a>
-                <a class="act" href="{{ route('admin.water-analyses.edit', $analysis) }}" title="Modifier">{!! $edit !!}</a>
-                <button class="act del" type="button"
+              <div class="flex justify-end gap-1.5">
+                <a class="btn-icon" href="{{ route('admin.water-analyses.show', $analysis) }}" title="Voir">{!! $eye !!}</a>
+                <a class="btn-icon" href="{{ route('admin.water-analyses.edit', $analysis) }}" title="Modifier">{!! $edit !!}</a>
+                <button class="btn-icon btn-icon-danger" type="button"
                   data-del="{{ $analysis->reference }}"
                   data-action="{{ route('admin.water-analyses.destroy', $analysis) }}"
                   title="Supprimer">{!! $trash !!}</button>
@@ -158,7 +158,7 @@
           </tr>
           @empty
           <tr>
-            <td colspan="9" class="muted" style="text-align:center;padding:28px">
+            <td colspan="9" class="text-muted text-center p-7">
               Aucune analyse ne correspond à ces critères.
             </td>
           </tr>
@@ -167,8 +167,8 @@
       </table>
     </div>
 
-    <div class="foot">
-      <span class="muted">
+    <div class="card-footer">
+      <span class="text-muted">
         @if ($analyses->total())
           Affichage {{ $analyses->firstItem() }} à {{ $analyses->lastItem() }} sur {{ $analyses->total() }}
         @else

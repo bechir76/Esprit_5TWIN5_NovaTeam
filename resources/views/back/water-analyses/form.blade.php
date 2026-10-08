@@ -17,11 +17,11 @@
 @section('title', $title)
 
 @section('content')
-<section data-page="analysis-form" class="stack">
+<section data-page="analysis-form" class="flex flex-col gap-3">
   <x-page-header :title="$title" :crumb="'Console / Qualité eau / '.($editing ? $analysis->reference : 'Nouvelle')" />
 
   @if ($errors->any())
-  <div class="alert alert-crit">
+  <div class="callout callout-crit">
     Le formulaire contient {{ $errors->count() }} erreur(s). Corrigez les champs signalés en rouge.
     @if ($errors->has('measurements'))
     <br><strong>{{ $errors->first('measurements') }}</strong>
@@ -29,17 +29,17 @@
   </div>
   @endif
 
-  <form class="form-layout" method="POST"
+  <form class="grid items-start gap-[18px] min-[1101px]:grid-cols-[minmax(0,1fr)_320px]" method="POST"
     action="{{ $editing ? route('admin.water-analyses.update', $analysis) : route('admin.water-analyses.store') }}"
     novalidate>
     @csrf
     @if ($editing) @method('PUT') @endif
 
     {{-- Colonne principale --}}
-    <div class="stack" style="gap:0">
+    <div class="flex flex-col gap-0">
       <div class="card">
-        <div class="fsec"><h2>Identification du prélèvement</h2>
-          <div class="fgrid">
+        <div class="form-section"><h2>Identification du prélèvement</h2>
+          <div class="grid grid-fit-[220px] gap-3.5">
             <x-form.select
               name="infrastructure_id"
               label="Infrastructure *"
@@ -73,20 +73,20 @@
         </div>
 
         {{-- Tableau de mesures dynamique --}}
-        <div class="fsec">
+        <div class="form-section">
           <h2>Mesures physico-chimiques et bactériologiques</h2>
-          <p class="hint">Saisissez au moins une valeur. Les champs laissés vides ne créent pas de mesure.
+          <p class="text-[.78rem] text-muted">Saisissez au moins une valeur. Les champs laissés vides ne créent pas de mesure.
             Les unités et la conformité sont calculées automatiquement.</p>
           @error('measurements')
-            <div class="alert alert-crit" style="padding:8px 12px">{{ $message }}</div>
+            <div class="callout callout-crit px-3 py-2">{{ $message }}</div>
           @enderror
-          <div class="table-wrap">
-            <table style="min-width:0">
+          <div class="overflow-x-auto">
+            <table class="data-table min-w-0">
               <thead>
                 <tr>
-                  <th style="width:36%">Paramètre</th>
-                  <th style="width:22%">Valeur</th>
-                  <th style="width:16%">Unité</th>
+                  <th class="w-[36%]">Paramètre</th>
+                  <th class="w-[22%]">Valeur</th>
+                  <th class="w-[16%]">Unité</th>
                   <th>Seuil réglementaire</th>
                 </tr>
               </thead>
@@ -102,25 +102,25 @@
                 <tr>
                   <td><strong>{{ $param->label() }}</strong></td>
                   <td>
-                    <div @class(['field', 'is-invalid' => $hasError]) style="margin:0">
+                    <div @class(['flex flex-col gap-1.5 [&>label]:text-[.84rem] [&>label]:font-semibold', '[&_.input]:border-crit [&_.input]:bg-crit-soft' => $hasError, 'm-0'])>
                       <input
-                        class="input"
+                        class="input min-w-[90px]"
                         type="text"
                         inputmode="decimal"
                         name="{{ $fieldName }}"
                         value="{{ $displayVal }}"
                         placeholder="—"
                         aria-label="{{ $param->label() }}"
-                        style="min-width:90px">
+                       >
                       @error("measurements.{$param->value}.value")
-                        <span class="error">{{ $message }}</span>
+                        <span class="text-[.78rem] font-medium text-crit-fg">{{ $message }}</span>
                       @enderror
                     </div>
                   </td>
-                  <td class="muted" style="font-size:.84rem">
+                  <td class="text-muted text-[.84rem]">
                     {{ $param->unit() ?: 'sans unité' }}
                   </td>
-                  <td class="muted" style="font-size:.82rem">{{ $param->thresholdHint() }}</td>
+                  <td class="text-muted text-[.82rem]">{{ $param->thresholdHint() }}</td>
                 </tr>
                 @endforeach
               </tbody>
@@ -131,8 +131,8 @@
     </div>
 
     {{-- Colonne latérale --}}
-    <aside class="stack" style="gap:18px">
-      <div class="card card-b stack"><h2>Statut</h2>
+    <aside class="flex flex-col gap-[18px]">
+      <div class="card p-[18px] flex flex-col gap-3"><h2>Statut</h2>
         <x-form.select
           name="status"
           label="Statut *"
@@ -142,17 +142,17 @@
       </div>
 
       @if ($editing)
-      <div class="card card-b stack"><h2>Référence</h2>
-        <span class="mono" style="font-size:1.1rem;font-weight:700">{{ $analysis->reference }}</span>
-        <span class="hint">Générée automatiquement, non modifiable.</span>
+      <div class="card p-[18px] flex flex-col gap-3"><h2>Référence</h2>
+        <span class="font-mono text-[1.1rem] font-bold">{{ $analysis->reference }}</span>
+        <span class="text-[.78rem] text-muted">Générée automatiquement, non modifiable.</span>
       </div>
       @endif
 
-      <div class="row">
-        <a class="btn btn-ghost"
+      <div class="flex flex-wrap items-center gap-2.5">
+        <a class="btn btn-ghost flex-1 justify-center"
           href="{{ $editing ? route('admin.water-analyses.show', $analysis) : route('admin.water-analyses.index') }}"
-          style="flex:1;justify-content:center">Annuler</a>
-        <button class="btn btn-primary" type="submit" style="flex:1;justify-content:center">
+         >Annuler</a>
+        <button class="btn btn-primary flex-1 justify-center" type="submit">
           {{ $editing ? 'Enregistrer' : 'Créer l\'analyse' }}
         </button>
       </div>
