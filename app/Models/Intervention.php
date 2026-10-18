@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * Intervention d'une équipe terrain sur un incident.
@@ -45,6 +46,7 @@ class Intervention extends Model
         'status',
         'report',
         'completed_at',
+        'started_at',
     ];
 
     /**
@@ -63,6 +65,7 @@ class Intervention extends Model
         'status' => InterventionStatus::class,
         'scheduled_at' => 'datetime',
         'completed_at' => 'datetime',
+        'started_at' => 'datetime',
         'estimated_hours' => 'decimal:1',
     ];
 
@@ -70,12 +73,19 @@ class Intervention extends Model
 
     protected static function booted(): void
     {
-        // completed_at suit le statut : renseigné à la fin de l'intervention, effacé sinon
         static::saving(function (self $intervention): void {
+            // completed_at suit le statut : renseigné à la fin de l'intervention, effacé sinon
             if ($intervention->status !== InterventionStatus::Terminee) {
                 $intervention->completed_at = null;
             } elseif ($intervention->completed_at === null) {
                 $intervention->completed_at = now();
+            }
+
+            // started_at : renseigné au démarrage (en cours ou terminée), effacé si l'intervention est replanifiée
+            if (in_array($intervention->status, [InterventionStatus::Planifiee, InterventionStatus::Annulee], true)) {
+                $intervention->started_at = null;
+            } elseif ($intervention->started_at === null) {
+                $intervention->started_at = min(now(), $intervention->completed_at ?? now());
             }
         });
 
@@ -85,9 +95,28 @@ class Intervention extends Model
 
             if ($intervention->status === InterventionStatus::EnCours
                 && in_array($incident->status, [IncidentStatus::Signale, IncidentStatus::Qualifie], true)) {
+                $incident->statusComment = "Intervention « {$intervention->title} » démarrée.";
                 $incident->update(['status' => IncidentStatus::EnIntervention]);
             }
         });
+    }
+
+    // ---------------------------------------------------------------- Créneau
+
+    /** Fin prévue du créneau : date prévue + durée estimée. */
+    public function endsAt(): Carbon
+    {
+        return $this->scheduled_at->copy()->addMinutes((int) round((float) $this->estimated_hours * 60));
+    }
+
+    /** Durée réelle en heures (démarrage → fin), ou null si l'intervention n'est pas terminée. */
+    public function actualHours(): ?float
+    {
+        if (! $this->started_at || ! $this->completed_at) {
+            return null;
+        }
+
+        return round($this->started_at->diffInMinutes($this->completed_at) / 60, 1);
     }
 
     // ---------------------------------------------------------------- Relations

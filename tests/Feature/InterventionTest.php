@@ -88,8 +88,9 @@ class InterventionTest extends TestCase
 
         $this->actingAs($this->staff())->get(route('admin.interventions.index', ['status' => 'planifiee']))
             ->assertOk()
-            ->assertViewHas('interventions', fn ($interventions) => $interventions->count() === 10 && $interventions->total() === 12)
-            ->assertSee('status=planifiee&amp;page=2', false);
+            // Liste rendue par le composant Livewire InterventionTable
+            ->assertSeeLivewire('intervention-table')
+            ->assertSee('Affichage 1 à 10 sur 12');
     }
 
     // ---------------------------------------------------------------- Création

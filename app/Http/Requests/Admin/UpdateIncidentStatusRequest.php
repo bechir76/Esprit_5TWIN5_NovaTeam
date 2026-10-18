@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\IncidentStatus;
+use App\Services\Incidents\IncidentWorkflow;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -33,17 +34,19 @@ class UpdateIncidentStatusRequest extends FormRequest
     {
         return [
             'status' => ['required', Rule::enum(IncidentStatus::class)],
+            // Commentaire enregistré dans l'historique des statuts
+            'comment' => ['nullable', 'string', 'max:1000'],
         ];
     }
 
-    /** Le statut ne doit pas contredire les interventions de l'incident. */
+    /** Transition autorisée par le workflow et compatible avec les interventions de l'incident. */
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $v): void {
             $status = IncidentStatus::tryFrom((string) $this->input('status'));
 
-            if ($status && $conflict = $this->route('incident')->statusConflict($status)) {
-                $v->errors()->add('status', $conflict);
+            if ($status && $refusal = app(IncidentWorkflow::class)->refusal($this->route('incident'), $status)) {
+                $v->errors()->add('status', $refusal);
             }
         });
     }

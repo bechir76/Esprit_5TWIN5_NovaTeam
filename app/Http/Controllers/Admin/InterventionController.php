@@ -10,48 +10,77 @@ use App\Http\Requests\Admin\UpdateInterventionRequest;
 use App\Models\Incident;
 use App\Models\Intervention;
 use App\Models\User;
+use App\Services\Ai\IncidentAiService;
+use App\Services\Incidents\InterventionScheduler;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
+use Illuminate\Http\Response;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 /**
- * CRUD des interventions (personnel).
- * Création depuis la liste ou depuis la fiche d'un incident (?incident=ID, retour vers la fiche).
+ * Console : interventions (liste Livewire, planning, CRUD), création depuis la fiche d'un incident
+ * (?incident=ID, retour vers la fiche), conflits de planning (InterventionScheduler), rapport PDF et
+ * rédaction du rapport assistée par l'IA. Autorisations : InterventionPolicy.
  */
 class InterventionController extends Controller
 {
-    public function index(Request $request): View
+    /** Liste : recherche, filtres, tri et pagination rendus par le composant Livewire InterventionTable. */
+    public function index(): View
     {
-        $filters = $request->validate([
-            'q' => ['nullable', 'string', 'max:100'],
-            'status' => ['nullable', Rule::enum(InterventionStatus::class)],
-            'date' => ['nullable', 'date_format:Y-m-d'],
-        ]);
+        Gate::authorize('viewAny', Intervention::class);
 
-        $interventions = Intervention::query()
-            ->with(['incident.infrastructure', 'technician'])
-            ->search($filters['q'] ?? null)
-            ->ofStatus($filters['status'] ?? null)
-            ->scheduledOn($filters['date'] ?? null)
-            ->orderByDesc('scheduled_at')
-            ->paginate(10)
-            ->withQueryString();
+        return view('pages.interventions.index');
+    }
 
-        return view('pages.interventions.index', [
-            'interventions' => $interventions,
-            'filters' => $filters,
-        ]);
+    /** Planning (calendrier semaine / mois) : un clic sur un créneau ouvre le formulaire prérempli. */
+    public function planning(): View
+    {
+        Gate::authorize('viewAny', Intervention::class);
+
+        return view('pages.interventions.planning', ['teams' => Intervention::TEAMS]);
+    }
+
+    /** Évènements du calendrier entre deux dates (FullCalendar), colorés par statut. */
+    public function events(Request $request): JsonResponse
+    {
+        Gate::authorize('viewAny', Intervention::class);
+
+        $validated = $request->validate(['start' => ['required', 'date'], 'end' => ['required', 'date'], 'team' => ['nullable', 'string']]);
+        $colors = ['planifiee' => '#1CA7EC', 'en_cours' => '#F4A261', 'terminee' => '#2EC4B6', 'annulee' => '#9AA9B5'];
+
+        $events = Intervention::query()->with('incident')
+            ->whereBetween('scheduled_at', [Carbon::parse($validated['start'])->subHours(InterventionScheduler::MAX_HOURS), Carbon::parse($validated['end'])])
+            ->when($validated['team'] ?? null, fn ($q, $team) => $q->where('team', $team))
+            ->get()
+            ->map(fn (Intervention $i) => [
+                'id' => $i->id,
+                'title' => "{$i->team} · {$i->title} ({$i->incident->reference})",
+                'start' => $i->scheduled_at->toIso8601String(),
+                'end' => $i->endsAt()->toIso8601String(),
+                'color' => $colors[$i->status->value],
+                'url' => route('admin.interventions.show', $i),
+                'extendedProps' => ['status' => $i->status->label(), 'team' => $i->team],
+            ]);
+
+        return response()->json($events);
     }
 
     public function create(Request $request): View
     {
+        Gate::authorize('create', Intervention::class);
+
         $incident = Incident::find($request->integer('incident'));
 
+        // ?date=… (clic sur un créneau du planning) : date prévue préremplie
         $intervention = new Intervention([
             'incident_id' => $incident?->id,
             'status' => InterventionStatus::Planifiee,
+            'scheduled_at' => rescue(fn () => $request->filled('date') ? Carbon::parse($request->query('date')) : null, null, false),
+            'team' => in_array($request->query('equipe'), Intervention::TEAMS, true) ? $request->query('equipe') : null,
         ]);
 
         return view('pages.interventions.form', $this->formData($intervention) + [
@@ -59,16 +88,18 @@ class InterventionController extends Controller
         ]);
     }
 
-    public function store(StoreInterventionRequest $request): RedirectResponse
+    public function store(StoreInterventionRequest $request, InterventionScheduler $scheduler): RedirectResponse
     {
-        // L'enregistrement peut aussi faire passer l'incident « en intervention » (hook saved du modèle)
-        $intervention = DB::transaction(fn () => Intervention::create($request->validated()));
+        // Conflit d'équipe revérifié dans la transaction ; peut aussi faire passer l'incident « en intervention »
+        $intervention = $scheduler->create($request->safe()->except('retour'));
 
         return $this->redirectAfterSave($request, $intervention)->with('status', "Intervention « {$intervention->title} » planifiée.");
     }
 
     public function show(Intervention $intervention): View
     {
+        Gate::authorize('view', $intervention);
+
         $intervention->load(['incident.infrastructure.zone', 'technician']);
 
         return view('pages.interventions.show', ['intervention' => $intervention]);
@@ -76,18 +107,24 @@ class InterventionController extends Controller
 
     public function edit(Intervention $intervention): View
     {
+        Gate::authorize('update', $intervention);
+
         return view('pages.interventions.form', $this->formData($intervention) + ['fromIncident' => false]);
     }
 
-    public function update(UpdateInterventionRequest $request, Intervention $intervention): RedirectResponse
+    public function update(UpdateInterventionRequest $request, Intervention $intervention, InterventionScheduler $scheduler): RedirectResponse
     {
-        DB::transaction(fn () => $intervention->update($request->validated()));
+        Gate::authorize('update', $intervention);
+
+        $scheduler->update($intervention, $request->safe()->except('retour'));
 
         return $this->redirectAfterSave($request, $intervention)->with('status', "Intervention « {$intervention->title} » mise à jour.");
     }
 
     public function destroy(Request $request, Intervention $intervention): RedirectResponse
     {
+        Gate::authorize('delete', $intervention);
+
         $incident = $intervention->incident;
         $intervention->delete();
 
@@ -96,6 +133,27 @@ class InterventionController extends Controller
             : to_route('admin.interventions.index');
 
         return $redirect->with('status', "Intervention « {$intervention->title} » supprimée.");
+    }
+
+    /** Rapport d'intervention en PDF (barryvdh/laravel-dompdf). */
+    public function pdf(Intervention $intervention): Response
+    {
+        Gate::authorize('downloadReport', $intervention);
+
+        $intervention->load(['incident.infrastructure.zone', 'technician']);
+
+        return Pdf::loadView('pages.interventions.report-pdf', ['intervention' => $intervention])
+            ->download("rapport-{$intervention->incident->reference}-{$intervention->id}.pdf");
+    }
+
+    /** B3 : brouillon de rapport structuré à partir de mots-clés ; inséré dans le champ, jamais enregistré seul. */
+    public function draftReport(Request $request, Intervention $intervention, IncidentAiService $ai): JsonResponse
+    {
+        Gate::authorize('update', $intervention);
+
+        $validated = $request->validate(['keywords' => ['required', 'string', 'min:5', 'max:500']]);
+
+        return response()->json(['report' => $ai->draftReport($validated['keywords'], $intervention->load('incident'))]);
     }
 
     // ---------------------------------------------------------------- Helpers

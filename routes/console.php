@@ -11,3 +11,7 @@ Artisan::command('inspire', function () {
 // Module projets : clôture des collectes échues (échec + remboursements) et priorisation, chaque nuit
 Schedule::command('projects:close-expired')->dailyAt('01:00')->withoutOverlapping();
 Schedule::command('projects:score')->dailyAt('02:00')->withoutOverlapping();
+
+// Module incidents : délais dépassés (SLA) toutes les 15 minutes, incidents liés toutes les 30 minutes
+Schedule::command('incidents:check-sla')->everyFifteenMinutes()->withoutOverlapping();
+Schedule::command('incidents:cluster')->everyThirtyMinutes()->withoutOverlapping();

@@ -10,7 +10,7 @@
 @section('content')
 <section class="pt-10 pb-16" data-page="incidents">
   <div class="mx-auto max-w-[1200px] px-5">
-    <div class="mb-7 flex flex-wrap items-end justify-between gap-4 [&_p]:max-w-[60ch]"><div class="flex flex-col gap-2"><span class="kicker">Suivi public</span><h2>Incidents signalés</h2></div><a class="btn btn-primary" href="{{ route('incidents.create') }}">Signaler un incident</a></div>
+    <div class="mb-7 flex flex-wrap items-end justify-between gap-4 [&_p]:max-w-[60ch]"><div class="flex flex-col gap-2"><span class="kicker">Suivi public</span><h2>Incidents signalés</h2></div><div class="flex flex-wrap gap-2.5"><a class="btn btn-ghost" href="{{ route('incidents.map') }}">Voir la carte</a><a class="btn btn-primary" href="{{ route('incidents.create') }}">Signaler un incident</a></div></div>
     <div class="mb-5 flex gap-1 overflow-x-auto border-b border-line">
       <a href="{{ $tabUrl(null) }}" @class(['-mb-px border-b-2 px-3.5 py-2.5 font-semibold whitespace-nowrap', 'border-water text-ink' => empty($filters['status']), 'border-transparent text-muted hover:text-ink' => ! empty($filters['status'])])>Tous <span class="font-mono text-muted">({{ $counts->sum() }})</span></a>
       @foreach ($statuses as $status)

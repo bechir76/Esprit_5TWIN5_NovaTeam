@@ -40,7 +40,15 @@
         </div>
       </div>
       <div class="form-section"><h2>Compte rendu</h2>
-        <x-form.textarea name="report" label="Compte rendu" :value="$intervention->report" hint="Obligatoire pour une intervention terminée." />
+        <x-form.textarea name="report" label="Compte rendu" :value="$intervention->report" hint="Obligatoire pour une intervention terminée." rows="8" />
+        @if ($editing)
+        {{-- B3 : brouillon structuré à partir de quelques mots-clés ; l'agent relit et corrige avant d'enregistrer --}}
+        <div class="flex flex-col gap-2 rounded-[9px] border border-line p-3.5" id="aiReport" data-url="{{ route('admin.interventions.draft-report', $intervention) }}">
+          <label class="text-[.88rem] font-semibold" for="aiKeywords">✦ Rédiger le compte rendu avec l'IA</label>
+          <input class="input" id="aiKeywords" type="text" maxlength="500" placeholder="Ex. : joint remplacé, vanne DN 150, pression rétablie, surveiller 48 h">
+          <div class="flex flex-wrap items-center gap-2.5"><button class="btn btn-ghost btn-sm" type="button" id="aiDraft">Proposer un brouillon</button><span class="text-[.8rem] text-muted" id="aiDraftMsg">Le brouillon remplace le texte du compte rendu ; rien n'est enregistré sans votre validation.</span></div>
+        </div>
+        @endif
         <x-form.input name="completed_at" label="Terminée le" type="datetime-local" :value="$intervention->completed_at?->format('Y-m-d\TH:i')" max="{{ now()->format('Y-m-d\TH:i') }}" hint="Renseignée automatiquement à l'heure actuelle si laissée vide pour une intervention terminée." />
       </div>
     </div>
@@ -54,3 +62,34 @@
   </form>
 </section>
 @endsection
+
+@push('scripts')
+<script>
+  (() => {
+    const box = document.getElementById('aiReport');
+    if (!box) return;
+    const button = document.getElementById('aiDraft');
+    const message = document.getElementById('aiDraftMsg');
+    button.addEventListener('click', async () => {
+      const keywords = document.getElementById('aiKeywords').value.trim();
+      if (keywords.length < 5) { message.textContent = 'Saisissez au moins quelques mots-clés.'; return; }
+      button.disabled = true; button.textContent = 'Rédaction…';
+      try {
+        const res = await fetch(box.dataset.url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('input[name=_token]').value },
+          body: JSON.stringify({ keywords }),
+        });
+        if (res.status === 429) throw new Error('Trop de demandes : réessayez dans une minute.');
+        if (!res.ok) throw new Error("Le brouillon n'est pas disponible pour le moment.");
+        document.querySelector('textarea[name=report]').value = (await res.json()).report;
+        message.textContent = 'Brouillon inséré : relisez-le avant d\'enregistrer.';
+      } catch (e) {
+        message.textContent = e.message;
+      } finally {
+        button.disabled = false; button.textContent = 'Proposer un brouillon';
+      }
+    });
+  })();
+</script>
+@endpush
