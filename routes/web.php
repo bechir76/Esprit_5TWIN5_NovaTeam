@@ -16,9 +16,14 @@ use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\IncidentReportController;
 use App\Http\Controllers\InfrastructureMapController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\ReceiptController;
+use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\WaterQualityController;
+use App\Models\Project;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -45,12 +50,32 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/incidents', [IncidentReportController::class, 'store'])->name('incidents.store');
 });
 
-// Module 3 : projets publics (URL par slug) ; la contribution est réservée aux utilisateurs connectés à l'e-mail vérifié
+// Module 3 : projets publics (URL par slug), transparence et vérification des reçus (publiques)
 Route::get('/projets', [ProjectController::class, 'index'])->name('projects.index');
+Route::get('/projets-transparence', [ProjectController::class, 'transparency'])->name('projects.transparency');
 Route::get('/projets/{project:slug}', [ProjectController::class, 'show'])->name('projects.show');
-Route::post('/projets/{project:slug}/contributions', [ProjectController::class, 'contribute'])
-    ->middleware(['auth', 'verified'])
-    ->name('projects.fundings.store');
+Route::get('/recus/{funding}/verifier', [ReceiptController::class, 'verify'])->middleware('signed')->name('receipts.verify');
+
+// Dons Stripe Checkout : citoyen connecté à l'e-mail vérifié (ProjectPolicy::donate) ;
+// /projets/{slug}/contributions est conservée comme alias du formulaire sans JavaScript
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::post('/projects/{project:slug}/donate', [ProjectController::class, 'donate'])->name('projects.donate');
+    Route::post('/projets/{project:slug}/contributions', [ProjectController::class, 'donate'])->name('projects.fundings.store');
+    Route::get('/projects/{project:slug}/donate/success', [ProjectController::class, 'donateSuccess'])->name('projects.donate.success');
+    Route::get('/projects/{project:slug}/donate/cancel', [ProjectController::class, 'donateCancel'])->name('projects.donate.cancel');
+});
+
+// Reçu PDF (donateur) et centre de notifications du citoyen
+Route::middleware('auth')->group(function () {
+    Route::get('/financements/{funding}/recu', [ReceiptController::class, 'download'])->name('fundings.receipt');
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/lues', [NotificationController::class, 'markAllRead'])->name('notifications.read');
+});
+
+// Webhook Stripe : sans authentification ni CSRF, signature vérifiée par StripeWebhookController
+Route::post('/stripe/webhook', StripeWebhookController::class)
+    ->withoutMiddleware([ValidateCsrfToken::class])
+    ->name('stripe.webhook');
 
 // Profil (Breeze) : partagé avec le back office, la vue dépend de la route
 Route::middleware('auth')->group(function () {
@@ -93,13 +118,24 @@ Route::prefix('admin')->name('admin.')->group(function () use ($stub) {
         Route::resource('incidents', IncidentController::class);
         Route::resource('interventions', InterventionController::class);
 
-        // Projets de rénovation et financements (module 3) : URL /admin/projets et /admin/financements
-        Route::resource('projets', AdminProjectController::class)
-            ->parameters(['projets' => 'project'])
-            ->names('projects');
-        Route::resource('financements', FundingController::class)
-            ->parameters(['financements' => 'funding'])
-            ->names('fundings');
+        // Projets de rénovation et financements (module 3) : URL /admin/projets et /admin/financements,
+        // réservés à l'administrateur et au gestionnaire (ProjectPolicy / FundingPolicy)
+        Route::middleware('can:viewAny,'.Project::class)->group(function () {
+            Route::post('/projets/scores', [AdminProjectController::class, 'scoreAll'])->name('projects.scores');
+            Route::post('/projets/description-ia', [AdminProjectController::class, 'describe'])
+                ->middleware('throttle:'.config('ai.rate_limit').',1')
+                ->name('projects.describe');
+            Route::post('/projets/{project}/score', [AdminProjectController::class, 'score'])->name('projects.score');
+            Route::resource('projets', AdminProjectController::class)
+                ->parameters(['projets' => 'project'])
+                ->names('projects');
+
+            Route::get('/financements/tableau-de-bord', [FundingController::class, 'dashboard'])->name('fundings.dashboard');
+            Route::get('/financements/export', [FundingController::class, 'export'])->name('fundings.export');
+            Route::resource('financements', FundingController::class)
+                ->parameters(['financements' => 'funding'])
+                ->names('fundings');
+        });
 
         Route::view('/ia', 'pages.ai.insights')->name('ai.insights');
 

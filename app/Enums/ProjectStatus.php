@@ -2,23 +2,29 @@
 
 namespace App\Enums;
 
-/** Cycle de vie d'un projet : brouillon, collecte, financé, travaux, terminé. */
+/**
+ * Cycle de vie d'un projet (financement « tout ou rien ») :
+ * draft → open → funded → in_progress → completed, ou open → failed (dons remboursés).
+ * Les transitions autorisées sont définies par transitions() et vérifiées par le modèle Project.
+ */
 enum ProjectStatus: string
 {
-    case Brouillon = 'brouillon';
-    case EnCollecte = 'en_collecte';
-    case Finance = 'finance';
-    case EnTravaux = 'en_travaux';
-    case Termine = 'termine';
+    case Draft = 'draft';
+    case Open = 'open';
+    case Funded = 'funded';
+    case Failed = 'failed';
+    case InProgress = 'in_progress';
+    case Completed = 'completed';
 
     public function label(): string
     {
         return match ($this) {
-            self::Brouillon => 'Brouillon',
-            self::EnCollecte => 'En collecte',
-            self::Finance => 'Financé',
-            self::EnTravaux => 'En travaux',
-            self::Termine => 'Terminé',
+            self::Draft => 'Brouillon',
+            self::Open => 'En collecte',
+            self::Funded => 'Financé',
+            self::Failed => 'Échoué',
+            self::InProgress => 'En travaux',
+            self::Completed => 'Terminé',
         };
     }
 
@@ -26,17 +32,40 @@ enum ProjectStatus: string
     public function badge(): string
     {
         return match ($this) {
-            self::Brouillon => 'b-mute',
-            self::EnCollecte => 'b-info',
-            self::Finance, self::Termine => 'b-ok',
-            self::EnTravaux => 'b-warn',
+            self::Draft => 'b-mute',
+            self::Open => 'b-info',
+            self::Funded, self::Completed => 'b-ok',
+            self::Failed => 'b-crit',
+            self::InProgress => 'b-warn',
         };
     }
 
-    /** Projet ayant atteint son objectif de financement (financé, en travaux ou terminé). */
+    /**
+     * Statuts suivants autorisés. « funded → open » : un financement supprimé ou remboursé
+     * peut faire repasser le projet sous l'objectif (recalcul automatique).
+     *
+     * @return list<self>
+     */
+    public function transitions(): array
+    {
+        return match ($this) {
+            self::Draft => [self::Open],
+            self::Open => [self::Funded, self::Failed, self::Draft],
+            self::Funded => [self::InProgress, self::Open],
+            self::InProgress => [self::Completed],
+            self::Failed, self::Completed => [],
+        };
+    }
+
+    public function canTransitionTo(self $to): bool
+    {
+        return $to === $this || in_array($to, $this->transitions(), true);
+    }
+
+    /** Projet ayant atteint son objectif (financé, en travaux ou terminé). */
     public function isFunded(): bool
     {
-        return in_array($this, [self::Finance, self::EnTravaux, self::Termine], true);
+        return in_array($this, [self::Funded, self::InProgress, self::Completed], true);
     }
 
     /** @return list<self> */

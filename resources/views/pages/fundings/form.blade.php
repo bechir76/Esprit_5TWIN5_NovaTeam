@@ -32,6 +32,7 @@
           <x-form.input name="funded_at" label="Date du financement *" type="date" :value="$funding->funded_at?->format('Y-m-d')" :max="today()->format('Y-m-d')" hint="Entre le début de la collecte du projet et aujourd'hui." />
         </div>
         <x-form.textarea name="note" label="Note" :value="$funding->note" hint="Convention, délibération municipale, contrepartie… (facultatif)" />
+        <label class="flex items-center gap-2 text-[.88rem]"><input type="checkbox" name="is_anonymous" value="1" @checked(old('is_anonymous', $funding->is_anonymous))> Afficher « Anonyme » sur la page Transparence</label>
       </div>
     </div>
     <aside class="flex flex-col gap-[18px]">

@@ -99,8 +99,8 @@ class DashboardController extends Controller
     {
         // Sparkline : total cumulé des financements à la fin de chacun des 8 derniers mois
         $months = collect(range(7, 0))->map(fn (int $k) => now()->startOfMonth()->subMonths($k));
-        $cumulative = (float) Funding::whereDate('funded_at', '<', $months->first())->sum('amount');
-        $recent = Funding::whereDate('funded_at', '>=', $months->first())->get(['funded_at', 'amount']);
+        $cumulative = (float) Funding::confirmed()->whereDate('funded_at', '<', $months->first())->sum('amount');
+        $recent = Funding::confirmed()->whereDate('funded_at', '>=', $months->first())->get(['funded_at', 'amount']);
         $spark = [];
         foreach ($months as $month) {
             $cumulative += (float) $recent->filter(fn (Funding $f) => $f->funded_at->isSameMonth($month))->sum('amount');
@@ -108,13 +108,13 @@ class DashboardController extends Controller
         }
 
         return [
-            'fundsCollected' => (float) Funding::sum('amount'),
-            'fundsThisMonth' => (float) Funding::whereDate('funded_at', '>=', now()->startOfMonth())->sum('amount'),
+            'fundsCollected' => (float) Funding::confirmed()->sum('amount'),
+            'fundsThisMonth' => (float) Funding::confirmed()->whereDate('funded_at', '>=', now()->startOfMonth())->sum('amount'),
             'fundsSpark' => $spark,
             // Avancement des projets en collecte, financés ou en travaux, les plus avancés d'abord
             'dashboardProjects' => Project::query()
-                ->ofStatus([ProjectStatus::EnCollecte, ProjectStatus::Finance, ProjectStatus::EnTravaux])
-                ->withSum('fundings', 'amount')
+                ->ofStatus([ProjectStatus::Open, ProjectStatus::Funded, ProjectStatus::InProgress])
+                ->withCollected()
                 ->orderByProgress()
                 ->limit(4)
                 ->get(),

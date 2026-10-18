@@ -74,19 +74,23 @@
             @forelse ($contributions as $funding)
             <div class="line-item">
               <span>
-                @if ($funding->project->is_public && $funding->project->status !== \App\Enums\ProjectStatus::Brouillon)
+                @if ($funding->project->isPublished())
                 <a class="hover:underline" href="{{ route('projects.show', $funding->project) }}">{{ $funding->project->title }}</a>
                 @else
                 {{ $funding->project->title }}
                 @endif
                 <br><span class="font-mono text-[.76rem] text-muted">{{ $funding->reference }} · {{ $funding->funded_at->format('d/m/Y') }}</span>
+                <span class="badge {{ $funding->status->badge() }}">{{ $funding->status->label() }}</span>
+                @if ($funding->hasReceipt())
+                <a class="text-[.8rem] text-water underline" href="{{ route('fundings.receipt', $funding) }}">Reçu {{ $funding->receipt_number }}</a>
+                @endif
               </span>
-              <span class="font-mono whitespace-nowrap">{{ \App\Models\Project::money($funding->amount) }} TND</span>
+              <span class="font-mono whitespace-nowrap">{{ \App\Models\Project::money($funding->amount) }} DT</span>
             </div>
             @empty
             <p class="py-2 text-muted">Vous n'avez encore soutenu aucun projet. <a class="text-water underline" href="{{ route('projects.index') }}">Voir les projets</a></p>
             @endforelse
-            <div class="line-item border-b-0 font-bold"><span>Total</span><span class="font-mono">{{ \App\Models\Project::money($contributions->sum('amount')) }} TND</span></div>
+            <div class="line-item border-b-0 font-bold"><span>Total des dons confirmés</span><span class="font-mono">{{ \App\Models\Project::money($contributions->where('status', \App\Enums\FundingStatus::Confirmed)->sum('amount')) }} DT</span></div>
           </div>
 
           {{-- Préférences simulées : pas encore enregistrées --}}

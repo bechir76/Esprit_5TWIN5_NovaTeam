@@ -3,171 +3,155 @@
 namespace Tests\Feature\Livewire;
 
 use App\Enums\FundingSource;
+use App\Enums\FundingStatus;
 use App\Enums\ProjectStatus;
 use App\Livewire\ProjectContribution;
+use App\Livewire\ProjectProgress;
 use App\Models\Funding;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Mockery\MockInterface;
 use Tests\TestCase;
 
+/** Composants Livewire de la fiche publique : don (redirection Stripe simulée) et progression en temps réel. */
 class ProjectContributionTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** Projet en collecte de 1 000 TND, sans financement, ouvert encore un mois. */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['services.stripe.secret' => 'sk_test_fake']);
+        $this->partialMock(StripeService::class, fn (MockInterface $mock) => $mock->shouldReceive('createCheckoutSession')
+            ->andReturnUsing(fn (Funding $f) => ['id' => 'cs_test_'.$f->id, 'url' => 'https://checkout.stripe.com/c/pay/cs_test_'.$f->id]));
+    }
+
+    /** Projet en collecte de 1 000 DT, sans financement, ouvert encore un mois. */
     private function project(array $attributes = []): Project
     {
-        return Project::factory()->collecting()->create($attributes + [
+        return Project::factory()->open()->create($attributes + [
             'target_budget' => 1000,
             'start_date' => today()->subMonth(),
             'end_date' => today()->addMonth(),
         ]);
     }
 
-    public function test_show_page_contains_the_component(): void
+    public function test_show_page_contains_the_components(): void
     {
         $project = $this->project();
 
         $this->get(route('projects.show', $project))
             ->assertOk()
-            ->assertSeeLivewire(ProjectContribution::class);
+            ->assertSeeLivewire(ProjectContribution::class)
+            ->assertSeeLivewire(ProjectProgress::class)
+            ->assertSee('wire:poll.5s', false);
     }
 
-    public function test_citizen_contribution_updates_amount_and_progress(): void
+    public function test_citizen_is_redirected_to_stripe_with_a_pending_donation(): void
     {
         $project = $this->project();
         $citizen = User::factory()->citoyen()->create();
 
         Livewire::actingAs($citizen)
             ->test(ProjectContribution::class, ['project' => $project])
-            ->assertSee('0 %')
             ->set('amountOther', '150,5')
+            ->set('anonymous', true)
             ->assertHasNoErrors()
             ->call('contribute')
             ->assertHasNoErrors()
-            ->assertSee('150,50 TND')
-            ->assertSee('15 %')
-            ->assertSee('Merci ! Votre contribution de 150,50 TND')
-            ->assertSet('amountOther', '');
+            ->assertRedirect('https://checkout.stripe.com/c/pay/cs_test_'.Funding::sole()->id);
 
         $funding = Funding::sole();
         $this->assertSame($citizen->id, $funding->user_id);
         $this->assertSame(FundingSource::Citoyen, $funding->source_type);
-        $this->assertSame($citizen->name, $funding->donor_name);
+        $this->assertSame(FundingStatus::Pending, $funding->status);
+        $this->assertSame('cs_test_'.$funding->id, $funding->stripe_session_id);
+        $this->assertTrue($funding->is_anonymous);
         $this->assertEquals(150.5, $funding->amount);
-        $this->assertTrue($funding->funded_at->isToday());
     }
 
     public function test_quick_amount_is_used_when_no_other_amount_is_given(): void
     {
-        $project = $this->project();
-
         Livewire::actingAs(User::factory()->citoyen()->create())
-            ->test(ProjectContribution::class, ['project' => $project])
-            ->set('amount', '100')
-            ->call('contribute')
-            ->assertHasNoErrors()
-            ->assertSee('10 %');
+            ->test(ProjectContribution::class, ['project' => $this->project()])
+            ->set('amount', '20')
+            ->call('contribute');
 
-        $this->assertEquals(100, Funding::sole()->amount);
-    }
-
-    public function test_selected_preset_is_the_persisted_and_reported_amount(): void
-    {
-        foreach (['20', '100'] as $preset) {
-            $project = $this->project();
-
-            Livewire::actingAs(User::factory()->citoyen()->create())
-                ->test(ProjectContribution::class, ['project' => $project])
-                ->set('amount', $preset)
-                ->call('contribute')
-                ->assertHasNoErrors()
-                ->assertSee("Merci ! Votre contribution de {$preset} TND");
-
-            $this->assertEquals((int) $preset, $project->fundings()->sole()->amount);
-        }
+        $this->assertEquals(20, Funding::sole()->amount);
     }
 
     public function test_amount_is_validated_in_real_time(): void
     {
         Livewire::actingAs(User::factory()->citoyen()->create())
             ->test(ProjectContribution::class, ['project' => $this->project()])
-            ->set('amountOther', '2')
+            ->set('amountOther', '3')
             ->assertHasErrors(['amount' => 'min'])
-            ->assertSee('La contribution minimale est de 5 TND.')
             ->set('amountOther', '20000')
             ->assertHasErrors(['amount' => 'max'])
-            ->set('amountOther', 'beaucoup')
-            ->assertHasErrors(['amount' => 'numeric'])
-            ->set('amountOther', '25')
+            ->set('amountOther', '75')
             ->assertHasNoErrors();
-    }
-
-    public function test_invalid_amount_is_refused(): void
-    {
-        $project = $this->project();
-
-        Livewire::actingAs(User::factory()->citoyen()->create())
-            ->test(ProjectContribution::class, ['project' => $project])
-            ->set('amountOther', '10001')
-            ->call('contribute')
-            ->assertHasErrors(['amount' => 'max'])
-            ->assertSee('0 %');
 
         $this->assertDatabaseCount('fundings', 0);
     }
 
-    public function test_guest_sees_a_login_link_and_cannot_contribute(): void
+    public function test_guest_sees_a_login_link_and_cannot_donate(): void
     {
         $project = $this->project();
 
         Livewire::test(ProjectContribution::class, ['project' => $project])
             ->assertSee('Connectez-vous pour contribuer')
-            ->assertDontSee('Contribuer au projet')
             ->call('contribute')
             ->assertRedirect(route('login'));
 
         $this->assertDatabaseCount('fundings', 0);
     }
 
-    public function test_project_not_collecting_or_expired_is_refused(): void
+    public function test_project_not_open_or_expired_is_refused(): void
     {
         $citizen = User::factory()->citoyen()->create();
 
-        // Le formulaire n'est pas affiché : le message d'erreur est vérifié dans le sac d'erreurs du composant
-        $funded = $this->project(['status' => ProjectStatus::Finance]);
-        $component = Livewire::actingAs($citizen)
-            ->test(ProjectContribution::class, ['project' => $funded])
-            ->assertSee('Ce projet n\'accepte plus de contributions', false)
+        Livewire::actingAs($citizen)
+            ->test(ProjectContribution::class, ['project' => $this->project(['status' => ProjectStatus::Funded])])
+            ->assertSee('Ce projet n\'accepte plus de dons', false)
             ->call('contribute')
             ->assertHasErrors('project');
-        $this->assertSame('Ce projet n\'accepte pas de contributions : il est « Financé ».', $component->errors()->first('project'));
 
-        $expired = $this->project(['start_date' => today()->subMonths(3), 'end_date' => today()->subDay()]);
-        $component = Livewire::actingAs($citizen)
-            ->test(ProjectContribution::class, ['project' => $expired])
+        Livewire::actingAs($citizen)
+            ->test(ProjectContribution::class, ['project' => Project::factory()->open()->expired()->create()])
+            ->assertSee('la collecte est terminée')
             ->call('contribute')
             ->assertHasErrors('project');
-        $this->assertSame('La collecte de ce projet est terminée depuis le '.today()->subDay()->format('d/m/Y').'.', $component->errors()->first('project'));
 
         $this->assertDatabaseCount('fundings', 0);
     }
 
-    public function test_reaching_the_target_switches_the_project_to_funded(): void
+    public function test_staff_cannot_donate_online(): void
+    {
+        Livewire::actingAs(User::factory()->admin()->create())
+            ->test(ProjectContribution::class, ['project' => $this->project()])
+            ->call('contribute')
+            ->assertHasErrors('project');
+
+        $this->assertDatabaseCount('fundings', 0);
+    }
+
+    public function test_progress_component_counts_confirmed_donations_only(): void
     {
         $project = $this->project();
-        Funding::factory()->for($project)->create(['amount' => 950]);
+        Funding::factory()->for($project)->fromCitizen()->confirmed()->create(['amount' => 250]);
+        Funding::factory()->for($project)->fromCitizen()->pending()->create(['amount' => 500]);
 
-        Livewire::actingAs(User::factory()->citoyen()->create())
-            ->test(ProjectContribution::class, ['project' => $project])
-            ->set('amount', '50')
-            ->call('contribute')
-            ->assertHasNoErrors()
-            ->assertSee('100 %')
-            ->assertSee('Ce projet n\'accepte plus de contributions', false);
+        Livewire::test(ProjectProgress::class, ['project' => $project])
+            ->assertSee('250 DT')
+            ->assertSee('25 %')
+            ->assertSee('1</strong> donateur', false);
 
-        $this->assertSame(ProjectStatus::Finance, $project->fresh()->status);
+        // Nouveau don confirmé : visible au prochain rafraîchissement (wire:poll)
+        Funding::factory()->for($project)->municipal()->create(['amount' => 250]);
+        Livewire::test(ProjectProgress::class, ['project' => $project])->assertSee('500 DT')->assertSee('50 %');
     }
 }

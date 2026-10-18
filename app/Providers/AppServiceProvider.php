@@ -4,6 +4,9 @@ namespace App\Providers;
 
 use App\Http\Middleware\EnsureUserIsStaff;
 use App\Models\User;
+use App\Services\Ai\AnthropicLlmClient;
+use App\Services\Ai\LlmClient;
+use App\Services\Ai\NullLlmClient;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -20,7 +23,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Module projets : client IA (Claude si une clé est configurée, sinon repli sans appel réseau)
+        $this->app->bind(LlmClient::class, fn () => filled(config('ai.api_key'))
+            ? new AnthropicLlmClient(config('ai.api_key'), config('ai.model'), config('ai.timeout'))
+            : new NullLlmClient);
     }
 
     /**
