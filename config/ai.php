@@ -7,11 +7,19 @@
 
 return [
 
+    // anthropic (Claude, ANTHROPIC_API_KEY) ou gemini (Google, GEMINI_API_KEY)
     'provider' => env('AI_PROVIDER', 'anthropic'),
 
     'api_key' => env('ANTHROPIC_API_KEY'),
 
     'model' => env('AI_MODEL', 'claude-opus-5-5'),
+
+    // Google Gemini : modèle de secours utilisé si le modèle principal est surchargé (429 / 503)
+    'gemini' => [
+        'api_key' => env('GEMINI_API_KEY'),
+        'model' => env('GEMINI_MODEL', 'gemini-3.5-flash'),
+        'fallback_model' => env('GEMINI_FALLBACK_MODEL', 'gemini-3.5-flash-lite'),
+    ],
 
     // Délai maximal d'un appel (secondes) ; au-delà, le repli est utilisé
     'timeout' => (float) env('AI_TIMEOUT', 20),
@@ -22,7 +30,7 @@ return [
     // Module incidents : classification, urgence, rapports, incidents liés, analyse de photo
     'incidents' => [
         'enabled' => (bool) env('AI_INCIDENTS_ENABLED', true),
-        // Analyse de la photo jointe (le modèle Claude accepte les images)
+        // Analyse de la photo jointe (Claude et Gemini acceptent les images)
         'vision' => (bool) env('AI_INCIDENTS_VISION', true),
         'max_tokens' => 1024,
     ],
