@@ -89,6 +89,7 @@
         <a class="menu-item" href="{{ route('profile.edit') }}">Mon profil</a>
         <a class="menu-item" href="{{ route('profile.edit') }}#signalements">Mes signalements</a>
         <a class="menu-item" href="{{ route('profile.edit') }}#contributions">Mes contributions</a>
+        <a class="menu-item" href="{{ route('notifications.index') }}">Mes notifications @if ($me->unreadNotifications()->exists())<span class="badge b-info">nouveau</span>@endif</a>
         @if ($me->isStaff())
         <a class="menu-item" href="{{ route('admin.dashboard') }}">Console de gestion</a>
         @endif

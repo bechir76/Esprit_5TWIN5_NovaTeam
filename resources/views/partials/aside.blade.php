@@ -31,7 +31,8 @@
             ],
             'Financement' => [
                 ['admin.projects.index', 'Projets de rénovation', 'proj', null, 'admin.projects.*'],
-                ['admin.fundings.index', 'Financements', 'money', null, 'admin.fundings.*'],
+                ['admin.fundings.index', 'Financements', 'money', null, 'admin.fundings.index|admin.fundings.create|admin.fundings.show|admin.fundings.edit'],
+                ['admin.fundings.dashboard', 'Tableau financier', 'dash', null, 'admin.fundings.dashboard'],
             ],
             'Intelligence' => [
                 ['admin.ai.insights', 'Analyses IA', 'ai', null, 'admin.ai.*'],

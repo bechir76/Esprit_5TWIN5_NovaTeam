@@ -11,18 +11,20 @@
 @section('content')
 <section data-page="financements" class="flex flex-col gap-3">
   <x-page-header title="Financements">
+    <a class="btn btn-ghost" href="{{ route('admin.fundings.dashboard') }}">Tableau financier</a>
+    <a class="btn btn-ghost" href="{{ route('admin.fundings.export', array_filter($filters)) }}">Exporter (CSV)</a>
     <a class="btn btn-primary" href="{{ route('admin.fundings.create', array_filter(['projet' => $filters['projet'] ?? null])) }}">+ Enregistrer un financement</a>
   </x-page-header>
   <div class="grid gap-[18px] grid-fit-[170px]">
-    <x-kpi-card label="Total collecté" :value="\App\Models\Project::money($totalCollected)" unit="TND" />
-    <x-kpi-card label="Contributions" :value="number_format($contributionsCount, 0, ',', ' ')" />
+    <x-kpi-card label="Total collecté" :value="\App\Models\Project::money($totalCollected)" unit="DT" />
+    <x-kpi-card label="Dons confirmés" :value="number_format($contributionsCount, 0, ',', ' ')" />
     <x-kpi-card label="Part municipale" :value="$municipalShare.' %'" />
     <x-kpi-card label="Projets financés à 100 %" :value="$fullyFundedCount" />
   </div>
   <div class="grid gap-[18px] grid-cols-[repeat(auto-fit,minmax(min(100%,420px),1fr))]">
     <div class="card"><div class="card-header"><h2>Contributions récentes</h2></div>
       <form class="filter-bar" method="GET" action="{{ route('admin.fundings.index') }}">
-        <input class="input min-w-[200px] flex-1" type="search" name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Référence, financeur…" aria-label="Rechercher">
+        <input class="input min-w-[200px] flex-1" type="search" name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Référence, reçu, financeur…" aria-label="Rechercher">
         <select class="input w-auto" name="projet" aria-label="Projet" onchange="this.form.submit()">
           <option value="">Tous les projets</option>
           @foreach ($projects as $id => $title)
@@ -35,6 +37,12 @@
           <option value="{{ $source->value }}" @selected(($filters['source'] ?? '') === $source->value)>{{ $source->label() }}</option>
           @endforeach
         </select>
+        <select class="input w-auto" name="statut" aria-label="Statut" onchange="this.form.submit()">
+          <option value="">Tous les statuts</option>
+          @foreach (\App\Enums\FundingStatus::cases() as $status)
+          <option value="{{ $status->value }}" @selected(($filters['statut'] ?? '') === $status->value)>{{ $status->label() }}</option>
+          @endforeach
+        </select>
         <input @class(['input', 'border-crit! bg-crit-soft!' => $errors->has('du')]) type="date" name="du" value="{{ $filters['du'] ?? request('du') }}" aria-label="Du" title="Du">
         <input @class(['input', 'border-crit! bg-crit-soft!' => $errors->has('au')]) type="date" name="au" value="{{ $filters['au'] ?? request('au') }}" aria-label="Au" title="Au">
         <button class="btn btn-ghost" type="submit">Filtrer</button>
@@ -42,20 +50,23 @@
         <a class="btn btn-ghost" href="{{ route('admin.fundings.index') }}">Réinitialiser</a>
         @endif
       </form>
-      <div class="overflow-x-auto"><table class="data-table min-w-[560px]"><thead><tr><th>Date</th><th>Source</th><th>Projet</th><th class="text-right">Montant</th><th></th></tr></thead><tbody>
+      <div class="overflow-x-auto"><table class="data-table min-w-[620px]"><thead><tr><th>Date</th><th>Source</th><th>Projet</th><th class="text-right">Montant</th><th>Statut</th><th></th></tr></thead><tbody>
       @forelse ($fundings as $funding)
       <tr>
         <td class="font-mono whitespace-nowrap">{{ $funding->funded_at->format('d/m/Y') }}<br><a href="{{ route('admin.fundings.show', $funding) }}" class="text-muted text-[.74rem]">{{ $funding->reference }}</a></td>
-        <td>{{ $funding->donor_name }}<br><span class="text-muted text-[.78rem]">{{ $funding->source_type->label() }}@if ($funding->user) · compte citoyen @endif</span></td>
+        <td>{{ $funding->donor_name }}<br><span class="text-muted text-[.78rem]">{{ $funding->source_type->label() }}@if ($funding->user) · compte citoyen @endif @if ($funding->is_anonymous) · anonyme @endif</span></td>
         <td><a class="underline" href="{{ route('admin.projects.show', $funding->project) }}">{{ $funding->project->title }}</a></td>
-        <td class="font-mono text-right whitespace-nowrap">{{ \App\Models\Project::money($funding->amount) }} TND</td>
+        <td class="font-mono text-right whitespace-nowrap">{{ \App\Models\Project::money($funding->amount) }} DT</td>
+        <td><x-status-badge :value="$funding->status->label()" :variant="$funding->status->badge()" />@if ($funding->is_matching)<br><span class="text-muted text-[.74rem]">cofinancement</span>@endif</td>
         <td><div class="flex justify-end gap-1.5">
           <a class="btn-icon" href="{{ route('admin.fundings.edit', $funding) }}" title="Modifier">{!! $edit !!}</a>
+          @unless ($funding->stripe_payment_intent_id)
           <button class="btn-icon btn-icon-danger" type="button" data-del="{{ $funding->reference }}" data-action="{{ route('admin.fundings.destroy', $funding) }}" title="Supprimer">{!! $trash !!}</button>
+          @endunless
         </div></td>
       </tr>
       @empty
-      <tr><td colspan="5" class="text-muted text-center p-7">Aucun financement ne correspond à ces critères.</td></tr>
+      <tr><td colspan="6" class="text-muted text-center p-7">Aucun financement ne correspond à ces critères.</td></tr>
       @endforelse
       </tbody></table></div>
       <div class="card-footer">
