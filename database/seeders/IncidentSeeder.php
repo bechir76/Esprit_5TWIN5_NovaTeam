@@ -16,7 +16,8 @@ class IncidentSeeder extends Seeder
         $infrastructures = Infrastructure::all();
         $citoyens = User::where('role', Role::Citoyen)->get();
 
-        Incident::factory()->count(20)->recycle($infrastructures)->recycle($citoyens)->create();
+        Incident::factory()->count(15)->recycle($infrastructures)->recycle($citoyens)->create();
+        Incident::factory()->count(5)->critical()->recycle($infrastructures)->recycle($citoyens)->create();
         Incident::factory()->count(10)->qualified()->recycle($infrastructures)->recycle($citoyens)->create();
         Incident::factory()->count(10)->resolved()->recycle($infrastructures)->recycle($citoyens)->create();
     }

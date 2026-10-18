@@ -6,6 +6,7 @@ use App\Enums\InterventionStatus;
 use App\Models\Incident;
 use App\Models\Intervention;
 use App\Models\User;
+use Database\Factories\Concerns\UsesTunisiaProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -13,6 +14,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class InterventionFactory extends Factory
 {
+    use UsesTunisiaProvider;
+
     /**
      * @return array<string, mixed>
      */
@@ -20,11 +23,12 @@ class InterventionFactory extends Factory
     {
         return [
             'incident_id' => Incident::factory(),
-            'title' => fake()->sentence(3),
+            'title' => fake()->interventionTitle(),
+            // Équipes de la liste du modèle (« Équipe réseau · Ariana »…), acceptées par le formulaire
             'team' => fake()->randomElement(Intervention::TEAMS),
             'technician_id' => User::factory()->technicien(),
             'scheduled_at' => fake()->dateTimeBetween('-1 month', '+2 weeks'),
-            'estimated_hours' => fake()->randomFloat(1, 0.5, 8),
+            'estimated_hours' => fake()->randomElement([1, 1.5, 2, 3, 4, 6, 8]),
             'status' => InterventionStatus::Planifiee,
             'report' => null,
             'completed_at' => null,
@@ -44,10 +48,10 @@ class InterventionFactory extends Factory
     /** Terminée : passée, avec compte rendu et date de fin. */
     public function done(): static
     {
-        return $this->state([
+        return $this->state(fn () => [
             'status' => InterventionStatus::Terminee,
             'scheduled_at' => fake()->dateTimeBetween('-1 month', '-1 day'),
-            'report' => fake()->paragraph(),
+            'report' => fake()->interventionReport(),
             'completed_at' => now(),
         ]);
     }

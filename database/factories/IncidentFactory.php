@@ -8,6 +8,7 @@ use App\Enums\IncidentType;
 use App\Models\Incident;
 use App\Models\Infrastructure;
 use App\Models\User;
+use Database\Factories\Concerns\UsesTunisiaProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -17,20 +18,27 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class IncidentFactory extends Factory
 {
+    use UsesTunisiaProvider;
+
     /**
      * @return array<string, mixed>
      */
     public function definition(): array
     {
+        // Commune choisie une fois : l'adresse et les coordonnées restent cohérentes
+        $commune = fake()->tunisianCommune();
+        [$latitude, $longitude] = fake()->tunisianCoordinates($commune);
+
         return [
-            'title' => fake()->sentence(4),
-            'description' => fake()->paragraph(),
             'type' => fake()->randomElement(IncidentType::cases()),
+            // Titre et description réalistes selon le type (fuite, contamination, coupure)
+            'title' => fn (array $attributes) => fake()->incidentReport($attributes['type'])[0],
+            'description' => fn (array $attributes) => fake()->incidentDescription($attributes['title'], $attributes['type']),
             'severity' => fake()->randomElement(IncidentSeverity::cases()),
             'status' => IncidentStatus::Signale,
-            'address' => fake()->address(),
-            'latitude' => fake()->latitude(36.70, 36.95),
-            'longitude' => fake()->longitude(10.05, 10.35),
+            'address' => fake()->tunisianAddress($commune),
+            'latitude' => $latitude,
+            'longitude' => $longitude,
             'photo_path' => null,
             'infrastructure_id' => Infrastructure::factory(),
             'user_id' => User::factory()->citoyen(),

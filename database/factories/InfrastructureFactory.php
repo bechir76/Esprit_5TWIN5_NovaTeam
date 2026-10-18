@@ -2,11 +2,11 @@
 
 namespace Database\Factories;
 
-use App\Enums\CapacityUnit;
 use App\Enums\InfrastructureStatus;
 use App\Enums\InfrastructureType;
 use App\Models\Infrastructure;
 use App\Models\Zone;
+use Database\Factories\Concerns\UsesTunisiaProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -14,27 +14,31 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class InfrastructureFactory extends Factory
 {
+    use UsesTunisiaProvider;
+
     /**
      * @return array<string, mixed>
      */
     public function definition(): array
     {
+        [$latitude, $longitude] = fake()->tunisianCoordinates();
+
         return [
             'zone_id' => Zone::factory(),
-            // Code ouvrage au format ABC-ABC-000 (ex. RES-ARI-004)
-            'code' => fake()->unique()->regexify('[A-Z]{3}-[A-Z]{3}-[0-9]{3}'),
-            'name' => 'Ouvrage '.fake()->city(),
             'type' => fake()->randomElement(InfrastructureType::cases()),
+            // Code, nom, capacité et unité cohérents avec le type (RES-ARI-104, « Réservoir Chotrana Haut », m³)
+            'code' => fn (array $attributes) => fake()->unique()->infrastructureCode($attributes['type']),
+            'name' => fn (array $attributes) => fake()->unique()->tunisianInfrastructureName($attributes['type']),
+            'capacity' => fn (array $attributes) => fake()->infrastructureCapacity($attributes['type']),
+            'capacity_unit' => fn (array $attributes) => InfrastructureType::from($attributes['type'] instanceof InfrastructureType ? $attributes['type']->value : $attributes['type'])->defaultUnit(),
             'material' => fake()->randomElement(Infrastructure::MATERIALS),
-            'capacity' => fake()->randomFloat(2, 1, 10000),
-            'capacity_unit' => fake()->randomElement(CapacityUnit::cases()),
-            'commissioned_year' => fake()->numberBetween(1960, (int) now()->year),
+            'commissioned_year' => fake()->numberBetween(1965, (int) now()->year),
             'nominal_pressure' => fake()->optional()->randomFloat(1, 2, 10),
             'status' => fake()->randomElement(InfrastructureStatus::cases()),
-            'last_inspection_at' => fake()->dateTimeBetween('-18 months'),
-            'latitude' => fake()->latitude(36.70, 36.95),
-            'longitude' => fake()->longitude(10.05, 10.35),
-            'description' => fake()->optional()->sentence(),
+            'last_inspection_at' => fake()->dateTimeBetween('-1 year'),
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'description' => null,
             'is_public' => true,
         ];
     }

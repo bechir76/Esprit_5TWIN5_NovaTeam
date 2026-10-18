@@ -15,7 +15,7 @@ class FundingSeeder extends Seeder
     {
         $projects = Project::all();
 
-        Funding::factory()->count(40)->recycle($projects)->create();
-        Funding::factory()->count(30)->fromCitizen()->recycle($projects)->recycle(User::where('role', Role::Citoyen)->get())->create();
+        Funding::factory()->count(25)->recycle($projects)->create();
+        Funding::factory()->count(15)->fromCitizen()->recycle($projects)->recycle(User::where('role', Role::Citoyen)->get())->create();
     }
 }

@@ -7,6 +7,7 @@ use App\Enums\ProjectStatus;
 use App\Models\Funding;
 use App\Models\Infrastructure;
 use App\Models\Project;
+use Database\Factories\Concerns\UsesTunisiaProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -16,16 +17,20 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class ProjectFactory extends Factory
 {
+    use UsesTunisiaProvider;
+
     /**
      * @return array<string, mixed>
      */
     public function definition(): array
     {
         return [
-            'title' => fake()->sentence(4),
             'category' => fake()->randomElement(ProjectCategory::cases()),
-            'description' => fake()->paragraph(),
-            'target_budget' => fake()->randomFloat(2, 40000, 400000),
+            // Intitulé et description selon la catégorie (« Remplacement de la conduite principale de Mégrine »)
+            'title' => fn (array $attributes) => fake()->tunisianProjectTitle($attributes['category']),
+            'description' => fn (array $attributes) => fake()->tunisianProjectDescription($attributes['category']),
+            // Budget en dinars tunisiens, arrondi au millier
+            'target_budget' => fake()->numberBetween(40, 400) * 1000,
             'start_date' => fake()->dateTimeBetween('-3 months', '-2 weeks'),
             'end_date' => fake()->dateTimeBetween('+1 month', '+6 months'),
             'status' => ProjectStatus::EnCollecte,

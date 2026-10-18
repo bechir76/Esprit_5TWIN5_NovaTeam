@@ -16,8 +16,8 @@ class InterventionSeeder extends Seeder
         $incidents = Incident::open()->get();
         $techniciens = User::where('role', Role::Technicien)->get();
 
-        Intervention::factory()->count(20)->recycle($incidents)->recycle($techniciens)->create();
-        Intervention::factory()->count(10)->inProgress()->recycle($incidents)->recycle($techniciens)->create();
-        Intervention::factory()->count(10)->done()->recycle($incidents)->recycle($techniciens)->create();
+        Intervention::factory()->count(30)->recycle($incidents)->recycle($techniciens)->create();
+        Intervention::factory()->count(15)->inProgress()->recycle($incidents)->recycle($techniciens)->create();
+        Intervention::factory()->count(15)->done()->recycle($incidents)->recycle($techniciens)->create();
     }
 }

@@ -5,15 +5,18 @@ namespace Database\Factories;
 use App\Enums\WaterParameter;
 use App\Models\Measurement;
 use App\Models\WaterAnalysis;
+use Database\Factories\Concerns\UsesTunisiaProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * L'unité et la conformité sont calculées par le modèle à partir du paramètre.
+ * L'unité et la conformité sont calculées par le modèle à partir des seuils de l'enum WaterParameter.
  *
  * @extends Factory<Measurement>
  */
 class MeasurementFactory extends Factory
 {
+    use UsesTunisiaProvider;
+
     /**
      * @return array<string, mixed>
      */
@@ -41,9 +44,9 @@ class MeasurementFactory extends Factory
         return $this->state(['value' => fn (array $attributes) => $attributes['parameter']->max() + fake()->randomFloat(2, 0.5, 5)]);
     }
 
-    /** Une mesure par paramètre (6 mesures) : un paramètre n'apparaît qu'une fois par analyse. */
-    public function eachParameter(): static
+    /** Une mesure par paramètre principal (chlore, pH, turbidité, nitrate) : un paramètre n'apparaît qu'une fois par analyse. */
+    public function mainParameters(): static
     {
-        return $this->forEachSequence(...array_map(fn (WaterParameter $parameter) => ['parameter' => $parameter], WaterParameter::cases()));
+        return $this->forEachSequence(...array_map(fn (WaterParameter $parameter) => ['parameter' => $parameter], WaterParameter::publicMain()));
     }
 }

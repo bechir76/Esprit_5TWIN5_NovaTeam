@@ -6,6 +6,7 @@ use App\Enums\AnalysisStatus;
 use App\Models\Infrastructure;
 use App\Models\User;
 use App\Models\WaterAnalysis;
+use Database\Factories\Concerns\UsesTunisiaProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -16,6 +17,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class WaterAnalysisFactory extends Factory
 {
+    use UsesTunisiaProvider;
+
     /**
      * @return array<string, mixed>
      */
@@ -24,11 +27,11 @@ class WaterAnalysisFactory extends Factory
         return [
             'infrastructure_id' => Infrastructure::factory(),
             'sampled_at' => fake()->dateTimeBetween('-6 months'),
-            'sampling_point' => fake()->streetName(),
-            'laboratory' => 'Laboratoire '.fake()->city(),
+            'sampling_point' => fake()->samplingPoint(),
+            'laboratory' => fake()->tunisianLaboratory(),
             'sampled_by' => User::factory()->technicien(),
             'status' => fake()->randomElement(AnalysisStatus::cases()),
-            'notes' => fake()->optional()->sentence(),
+            'notes' => null,
         ];
     }
 

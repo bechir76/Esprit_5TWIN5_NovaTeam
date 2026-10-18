@@ -13,7 +13,7 @@ class ProjectSeeder extends Seeder
     {
         $infrastructures = Infrastructure::all();
 
-        Project::factory()->count(8)->recycle($infrastructures)->create();
+        Project::factory()->count(6)->recycle($infrastructures)->create();
         Project::factory()->count(2)->funded()->recycle($infrastructures)->create();
         Project::factory()->count(2)->draft()->recycle($infrastructures)->create();
     }
