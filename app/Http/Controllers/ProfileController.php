@@ -21,11 +21,11 @@ class ProfileController extends Controller
     public function edit(Request $request): View
     {
         if ($request->routeIs('admin.*')) {
-            return view('back.profile.edit', ['user' => $request->user()]);
+            return view('pages.profile.staff', ['user' => $request->user()]);
         }
 
         // Espace citoyen : « Mes signalements » et « Mes contributions »
-        return view('front.profile.edit', [
+        return view('pages.profile.citizen', [
             'user' => $request->user(),
             'reports' => $request->user()->reportedIncidents()->latest()->get(),
             'contributions' => $request->user()->fundings()->with('project')->orderByDesc('funded_at')->orderByDesc('id')->get(),

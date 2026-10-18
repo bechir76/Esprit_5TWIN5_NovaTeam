@@ -62,6 +62,6 @@
 
   <div class="card-footer">
     <span class="text-muted">@if ($infrastructures->total())Affichage {{ $infrastructures->firstItem() }} à {{ $infrastructures->lastItem() }} sur {{ $infrastructures->total() }}@else Aucun résultat @endif</span>
-    {{ $infrastructures->onEachSide(1)->links('livewire.partials.pagination') }}
+    {{ $infrastructures->onEachSide(1)->links('partials.livewire-pagination') }}
   </div>
 </div>

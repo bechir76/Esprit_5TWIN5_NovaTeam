@@ -64,7 +64,7 @@ class WaterAnalysisController extends Controller
             })(),
         ];
 
-        return view('back.water-analyses.index', [
+        return view('pages.water-analyses.index', [
             'analyses'        => $analyses,
             'filters'         => $filters,
             'kpis'            => $kpis,
@@ -80,7 +80,7 @@ class WaterAnalysisController extends Controller
             'status'            => AnalysisStatus::EnAttente,
         ]);
 
-        return view('back.water-analyses.form', $this->formData($analysis));
+        return view('pages.water-analyses.form', $this->formData($analysis));
     }
 
     public function store(StoreWaterAnalysisRequest $request): RedirectResponse
@@ -117,14 +117,14 @@ class WaterAnalysisController extends Controller
     {
         $analysis->load(['infrastructure.zone', 'sampledBy', 'measurements']);
 
-        return view('back.water-analyses.show', ['analysis' => $analysis]);
+        return view('pages.water-analyses.show', ['analysis' => $analysis]);
     }
 
     public function edit(WaterAnalysis $analysis): View
     {
         $analysis->load('measurements');
 
-        return view('back.water-analyses.form', $this->formData($analysis));
+        return view('pages.water-analyses.form', $this->formData($analysis));
     }
 
     public function update(UpdateWaterAnalysisRequest $request, WaterAnalysis $analysis): RedirectResponse

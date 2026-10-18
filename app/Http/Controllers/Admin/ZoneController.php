@@ -26,12 +26,12 @@ class ZoneController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        return view('back.zones.index', compact('zones', 'filters'));
+        return view('pages.zones.index', compact('zones', 'filters'));
     }
 
     public function create(): View
     {
-        return view('back.zones.form', ['zone' => new Zone]);
+        return view('pages.zones.form', ['zone' => new Zone]);
     }
 
     public function store(StoreZoneRequest $request): RedirectResponse
@@ -46,12 +46,12 @@ class ZoneController extends Controller
         $infrastructures = $zone->infrastructures()->orderBy('code')->get();
         $statusCounts = $infrastructures->countBy(fn ($infrastructure) => $infrastructure->status->value);
 
-        return view('back.zones.show', compact('zone', 'infrastructures', 'statusCounts'));
+        return view('pages.zones.show', compact('zone', 'infrastructures', 'statusCounts'));
     }
 
     public function edit(Zone $zone): View
     {
-        return view('back.zones.form', ['zone' => $zone->loadCount('infrastructures')]);
+        return view('pages.zones.form', ['zone' => $zone->loadCount('infrastructures')]);
     }
 
     public function update(UpdateZoneRequest $request, Zone $zone): RedirectResponse

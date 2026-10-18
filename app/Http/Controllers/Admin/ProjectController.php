@@ -39,7 +39,7 @@ class ProjectController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        return view('back.projects.index', [
+        return view('pages.projects.index', [
             'projects' => $projects,
             'filters' => $filters,
             'zones' => Zone::options(),
@@ -54,7 +54,7 @@ class ProjectController extends Controller
             'status' => ProjectStatus::Brouillon,
         ]);
 
-        return view('back.projects.form', $this->formData($project));
+        return view('pages.projects.form', $this->formData($project));
     }
 
     public function store(StoreProjectRequest $request): RedirectResponse
@@ -75,7 +75,7 @@ class ProjectController extends Controller
         $project->load(['infrastructure.zone', 'fundings' => fn ($q) => $q->with('user')->orderByDesc('funded_at')->orderByDesc('id')])
             ->loadSum('fundings', 'amount');
 
-        return view('back.projects.show', [
+        return view('pages.projects.show', [
             'project' => $project,
             // Montant par source (groupBy en base)
             'bySource' => $project->fundings()
@@ -88,7 +88,7 @@ class ProjectController extends Controller
 
     public function edit(Project $project): View
     {
-        return view('back.projects.form', $this->formData($project));
+        return view('pages.projects.form', $this->formData($project));
     }
 
     public function update(UpdateProjectRequest $request, Project $project): RedirectResponse

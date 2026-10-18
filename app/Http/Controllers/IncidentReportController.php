@@ -42,7 +42,7 @@ class IncidentReportController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        return view('front.incidents.index', [
+        return view('pages.incidents.public-index', [
             'incidents' => $incidents,
             'filters' => $filters,
             'statuses' => $publicStatuses,
@@ -54,7 +54,7 @@ class IncidentReportController extends Controller
 
     public function create(): View
     {
-        return view('front.incidents.create', [
+        return view('pages.incidents.report', [
             'infrastructures' => Infrastructure::public()
                 ->orderBy('code')
                 ->get(['id', 'code', 'name'])

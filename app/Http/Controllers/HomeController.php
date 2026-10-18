@@ -41,7 +41,7 @@ class HomeController extends Controller
             ->limit(4)
             ->get();
 
-        return view('front.home', [
+        return view('pages.home', [
             'infrastructureCount'  => Infrastructure::count(),
             'latestAnalysis'       => $latestAnalysis,
             'latestMeasurements'   => $latestMeasurements,

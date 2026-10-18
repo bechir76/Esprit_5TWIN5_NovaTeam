@@ -48,7 +48,7 @@ class ProjectController extends Controller
             'recents' => $query->latest(),
         };
 
-        return view('front.projects.index', [
+        return view('pages.projects.public-index', [
             'projects' => $query->orderBy('id')->paginate(9)->withQueryString(),
             'filters' => $filters,
             'sorts' => self::SORTS,
@@ -70,7 +70,7 @@ class ProjectController extends Controller
             ->get()
             ->keyBy(fn (Funding $f) => $f->source_type->value);
 
-        return view('front.projects.show', [
+        return view('pages.projects.public-show', [
             'project' => $project,
             'bySource' => $bySource,
             'sources' => FundingSource::cases(),

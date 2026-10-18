@@ -43,7 +43,7 @@ class IncidentController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        return view('back.incidents.index', [
+        return view('pages.incidents.index', [
             'incidents' => $incidents,
             'filters' => $filters,
             'zones' => Zone::options(),
@@ -57,7 +57,7 @@ class IncidentController extends Controller
             'infrastructure_id' => $request->integer('infrastructure') ?: null,
         ]);
 
-        return view('back.incidents.form', $this->formData($incident));
+        return view('pages.incidents.form', $this->formData($incident));
     }
 
     public function store(StoreIncidentRequest $request): RedirectResponse
@@ -79,12 +79,12 @@ class IncidentController extends Controller
     {
         $incident->load(['infrastructure.zone', 'user', 'interventions' => fn ($q) => $q->with('technician')->orderBy('scheduled_at')]);
 
-        return view('back.incidents.show', ['incident' => $incident]);
+        return view('pages.incidents.show', ['incident' => $incident]);
     }
 
     public function edit(Incident $incident): View
     {
-        return view('back.incidents.form', $this->formData($incident));
+        return view('pages.incidents.form', $this->formData($incident));
     }
 
     public function update(UpdateIncidentRequest $request, Incident $incident): RedirectResponse

@@ -40,7 +40,7 @@ class MeasurementController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        return view('back.water-analyses.measurements.index', [
+        return view('pages.water-analyses.measurements.index', [
             'measurements' => $measurements,
             'filters'      => $filters,
             'zones'        => Zone::orderBy('name')->pluck('name', 'id'),
@@ -56,7 +56,7 @@ class MeasurementController extends Controller
             ->mapWithKeys(fn (WaterParameter $p) => [$p->value => $p->label()])
             ->all();
 
-        return view('back.water-analyses.measurements.form', [
+        return view('pages.water-analyses.measurements.form', [
             'analysis'    => $analysis,
             'measurement' => new Measurement(['water_analysis_id' => $analysis->id]),
             'available'   => $available,
@@ -86,7 +86,7 @@ class MeasurementController extends Controller
             ->mapWithKeys(fn (WaterParameter $p) => [$p->value => $p->label()])
             ->all();
 
-        return view('back.water-analyses.measurements.form', [
+        return view('pages.water-analyses.measurements.form', [
             'analysis'    => $analyse,
             'measurement' => $mesure,
             'available'   => $available,

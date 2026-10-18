@@ -13,6 +13,6 @@ class WaterQualityController extends Controller
 {
     public function __invoke(): View
     {
-        return view('front.water-quality');
+        return view('pages.water-quality');
     }
 }

@@ -101,7 +101,7 @@ Route::prefix('admin')->name('admin.')->group(function () use ($stub) {
             ->parameters(['financements' => 'funding'])
             ->names('fundings');
 
-        Route::view('/ia', 'back.ai.insights')->name('ai.insights');
+        Route::view('/ia', 'pages.ai.insights')->name('ai.insights');
 
         // Utilisateurs et rôles : administrateurs uniquement (Gate « manage-users »)
         Route::middleware('can:manage-users')->group(function () {
@@ -118,7 +118,7 @@ Route::prefix('admin')->name('admin.')->group(function () use ($stub) {
         Route::put('/profil', [ProfileController::class, 'update'])->name('profile.update');
         Route::put('/profil/mot-de-passe', [PasswordController::class, 'update'])->name('password.update');
 
-        Route::view('/parametres', 'back.settings.edit')->name('settings.edit');
+        Route::view('/parametres', 'pages.settings.edit')->name('settings.edit');
         Route::put('/parametres', $stub('Seuils enregistrés.'))->name('settings.update');
     });
 });

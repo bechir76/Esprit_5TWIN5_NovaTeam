@@ -39,12 +39,12 @@ class UserController extends Controller
             ->selectRaw('sum(case when is_active then 0 else 1 end) as suspended')
             ->first();
 
-        return view('back.users.index', compact('users', 'counts', 'filters'));
+        return view('pages.users.index', compact('users', 'counts', 'filters'));
     }
 
     public function create(): View
     {
-        return view('back.users.form', ['user' => new User]);
+        return view('pages.users.form', ['user' => new User]);
     }
 
     public function store(StoreUserRequest $request): RedirectResponse
@@ -56,7 +56,7 @@ class UserController extends Controller
 
     public function edit(User $user): View
     {
-        return view('back.users.form', compact('user'));
+        return view('pages.users.form', compact('user'));
     }
 
     public function update(UpdateUserRequest $request, User $user): RedirectResponse

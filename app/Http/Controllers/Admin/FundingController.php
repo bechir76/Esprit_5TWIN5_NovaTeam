@@ -47,7 +47,7 @@ class FundingController extends Controller
         $total = (float) Funding::sum('amount');
         $municipal = (float) Funding::ofSource(FundingSource::Municipalite)->sum('amount');
 
-        return view('back.fundings.index', [
+        return view('pages.fundings.index', [
             'fundings' => $fundings,
             'filters' => $filters,
             'projects' => Project::options(),
@@ -74,7 +74,7 @@ class FundingController extends Controller
             'funded_at' => today(),
         ]);
 
-        return view('back.fundings.form', $this->formData($funding) + [
+        return view('pages.fundings.form', $this->formData($funding) + [
             'fromProject' => $project !== null,
         ]);
     }
@@ -91,12 +91,12 @@ class FundingController extends Controller
         $funding->load(['project.infrastructure.zone', 'user']);
         $funding->project->loadSum('fundings', 'amount');
 
-        return view('back.fundings.show', ['funding' => $funding]);
+        return view('pages.fundings.show', ['funding' => $funding]);
     }
 
     public function edit(Funding $funding): View
     {
-        return view('back.fundings.form', $this->formData($funding) + ['fromProject' => false]);
+        return view('pages.fundings.form', $this->formData($funding) + ['fromProject' => false]);
     }
 
     public function update(UpdateFundingRequest $request, Funding $funding): RedirectResponse

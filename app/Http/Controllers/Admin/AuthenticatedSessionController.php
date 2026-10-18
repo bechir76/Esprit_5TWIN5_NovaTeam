@@ -18,7 +18,7 @@ class AuthenticatedSessionController extends Controller
             return to_route('admin.dashboard');
         }
 
-        return view('back.auth.login');
+        return view('pages.auth.admin-login');
     }
 
     public function store(LoginRequest $request): RedirectResponse

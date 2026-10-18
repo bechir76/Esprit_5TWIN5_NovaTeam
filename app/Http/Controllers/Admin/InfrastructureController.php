@@ -17,7 +17,7 @@ class InfrastructureController extends Controller
     /** Liste : tableau, filtres (?q, ?type, ?status, ?zone) et pagination rendus par le composant Livewire InfrastructureTable. */
     public function index(): View
     {
-        return view('back.infrastructures.index');
+        return view('pages.infrastructures.index');
     }
 
     public function create(Request $request): View
@@ -28,7 +28,7 @@ class InfrastructureController extends Controller
             'is_public' => true,
         ]);
 
-        return view('back.infrastructures.form', ['infrastructure' => $infrastructure, 'zones' => Zone::options()]);
+        return view('pages.infrastructures.form', ['infrastructure' => $infrastructure, 'zones' => Zone::options()]);
     }
 
     public function store(StoreInfrastructureRequest $request): RedirectResponse
@@ -42,12 +42,12 @@ class InfrastructureController extends Controller
     {
         $infrastructure->load(['zone', 'incidents' => fn ($q) => $q->latest()]);
 
-        return view('back.infrastructures.show', compact('infrastructure'));
+        return view('pages.infrastructures.show', compact('infrastructure'));
     }
 
     public function edit(Infrastructure $infrastructure): View
     {
-        return view('back.infrastructures.form', ['infrastructure' => $infrastructure, 'zones' => Zone::options()]);
+        return view('pages.infrastructures.form', ['infrastructure' => $infrastructure, 'zones' => Zone::options()]);
     }
 
     public function update(UpdateInfrastructureRequest $request, Infrastructure $infrastructure): RedirectResponse

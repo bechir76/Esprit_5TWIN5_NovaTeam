@@ -36,7 +36,7 @@ class DashboardController extends Controller
                 ->first();
         }
 
-        return view('back.dashboard', [
+        return view('pages.dashboard', [
             'atRiskCount'       => Infrastructure::atRisk()->count(),
             'criticalCount'     => Infrastructure::ofStatus(InfrastructureStatus::Critique)->count(),
             'lastNonCompliant'  => $lastNonCompliant,

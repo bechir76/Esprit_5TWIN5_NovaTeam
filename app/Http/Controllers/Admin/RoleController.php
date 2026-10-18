@@ -22,6 +22,6 @@ class RoleController extends Controller
             'count' => (int) ($counts[$role->value] ?? 0),
         ]);
 
-        return view('back.roles.index', compact('roles'));
+        return view('pages.roles.index', compact('roles'));
     }
 }

@@ -52,7 +52,7 @@ class InfrastructureMapController extends Controller
             'lng' => $infrastructure->longitude,
         ])->values();
 
-        return view('front.infrastructures.map', [
+        return view('pages.infrastructures.map', [
             'sites' => $sites,
             'filters' => $filters,
             'zones' => Zone::options(),

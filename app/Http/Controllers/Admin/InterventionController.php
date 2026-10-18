@@ -39,7 +39,7 @@ class InterventionController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        return view('back.interventions.index', [
+        return view('pages.interventions.index', [
             'interventions' => $interventions,
             'filters' => $filters,
         ]);
@@ -54,7 +54,7 @@ class InterventionController extends Controller
             'status' => InterventionStatus::Planifiee,
         ]);
 
-        return view('back.interventions.form', $this->formData($intervention) + [
+        return view('pages.interventions.form', $this->formData($intervention) + [
             'fromIncident' => $incident !== null,
         ]);
     }
@@ -71,12 +71,12 @@ class InterventionController extends Controller
     {
         $intervention->load(['incident.infrastructure.zone', 'technician']);
 
-        return view('back.interventions.show', ['intervention' => $intervention]);
+        return view('pages.interventions.show', ['intervention' => $intervention]);
     }
 
     public function edit(Intervention $intervention): View
     {
-        return view('back.interventions.form', $this->formData($intervention) + ['fromIncident' => false]);
+        return view('pages.interventions.form', $this->formData($intervention) + ['fromIncident' => false]);
     }
 
     public function update(UpdateInterventionRequest $request, Intervention $intervention): RedirectResponse
