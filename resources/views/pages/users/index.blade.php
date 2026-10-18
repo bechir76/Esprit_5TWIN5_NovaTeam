@@ -43,7 +43,7 @@
     <div class="overflow-x-auto"><table class="data-table"><thead><tr><th>Utilisateur</th><th>Rôle</th><th>Organisation</th><th>Statut</th><th>Inscription</th><th></th></tr></thead><tbody>
       @forelse ($users as $user)
       <tr>
-        <td><div class="flex items-center gap-2.5 flex-nowrap"><span class="grid size-9 flex-none place-items-center rounded-full text-[.8rem] font-bold text-white" style="background:{{ $user->role->color() }}">{{ $user->initials() }}</span><span><strong>{{ $user->name }}</strong><br><span class="text-muted text-[.8rem]">{{ $user->email }}</span></span></div></td>
+        <td><div class="flex items-center gap-2.5 flex-nowrap"><span class="grid size-9 flex-none place-items-center rounded-full text-[.8rem] font-bold text-white" style="background:{{ $user->role->color() }}"><x-avatar :user="$user" /></span><span><strong>{{ $user->name }}</strong><br><span class="text-muted text-[.8rem]">{{ $user->email }}</span></span></div></td>
         <td><x-status-badge :value="$user->role->label()" :variant="$user->role->badge()" /></td>
         <td>{{ $user->organization ?? '—' }}</td>
         <td><x-status-badge :value="$user->is_active ? 'Actif' : 'Suspendu'" dot /></td>

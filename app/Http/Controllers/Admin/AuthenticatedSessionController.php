@@ -23,7 +23,10 @@ class AuthenticatedSessionController extends Controller
 
     public function store(LoginRequest $request): RedirectResponse
     {
-        $request->authenticate(staffOnly: true);
+        // 2FA activée : saisie du code avant l'ouverture de la session
+        if (! $request->authenticate(staffOnly: true)) {
+            return to_route('two-factor.login');
+        }
 
         $request->session()->regenerate();
 

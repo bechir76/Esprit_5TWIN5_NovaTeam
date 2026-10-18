@@ -13,12 +13,12 @@
     <div class="grid items-start gap-6 min-[901px]:grid-cols-[260px_1fr]">
       <aside class="card flex flex-col gap-4 p-[22px] min-[901px]:sticky min-[901px]:top-[90px]">
         <div class="flex flex-col items-center gap-2 text-center">
-          <div class="grid size-[84px] place-items-center rounded-full bg-teal font-display text-[1.8rem] font-extrabold text-[#06302C]">{{ $user->initials() }}</div>
+          <div class="grid size-[84px] place-items-center rounded-full bg-teal font-display text-[1.8rem] font-extrabold text-[#06302C]"><x-avatar :user="$user" /></div>
           <strong>{{ $user->name }}</strong>
           <span class="text-[.85rem] text-muted">Membre depuis {{ $user->created_at?->translatedFormat('F Y') }}</span>
         </div>
         <nav class="flex flex-col gap-0.5">
-          @foreach (['informations' => 'Informations personnelles', 'mot-de-passe' => 'Mot de passe', 'signalements' => 'Mes signalements', 'contributions' => 'Mes contributions', 'notifications' => 'Notifications'] as $anchor => $label)
+          @foreach (['informations' => 'Informations personnelles', 'mot-de-passe' => 'Mot de passe', 'deux-facteurs' => 'Double authentification', 'signalements' => 'Mes signalements', 'contributions' => 'Mes contributions', 'notifications' => 'Notifications'] as $anchor => $label)
           <a @class(['flex gap-2.5 rounded-lg px-3.5 py-[11px] font-medium', 'bg-water-soft text-ink' => $loop->first, 'text-muted hover:bg-surface-2 hover:text-ink' => ! $loop->first])
              href="{{ route('profile.edit') }}#{{ $anchor }}">{{ $label }}</a>
           @endforeach
@@ -26,7 +26,7 @@
       </aside>
 
       <div class="flex flex-col gap-6">
-        <form class="card flex scroll-mt-24 flex-col gap-4 p-[22px]" id="informations" method="POST" action="{{ route('profile.update') }}" novalidate>
+        <form class="card flex scroll-mt-24 flex-col gap-4 p-[22px]" id="informations" method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data" novalidate>
           @csrf
           @method('PUT')
           <h3>Informations personnelles</h3>
@@ -36,6 +36,7 @@
             <x-form.input name="phone" label="Téléphone" type="tel" :value="$user->phone" autocomplete="tel" />
             <x-form.input name="address" label="Adresse" :value="$user->address" autocomplete="street-address" />
           </div>
+          @include('partials.avatar-field')
           <div class="flex justify-end"><button class="btn btn-primary" type="submit">Enregistrer</button></div>
         </form>
 
@@ -50,6 +51,8 @@
           </div>
           <div class="flex justify-end"><button class="btn btn-navy" type="submit">Mettre à jour</button></div>
         </form>
+
+        @include('partials.two-factor')
 
         <div class="card scroll-mt-24 p-[22px]" id="signalements">
           <div class="mb-2 flex flex-wrap items-center justify-between gap-3"><h3>Mes signalements</h3><span class="font-mono text-[.85rem] text-muted">{{ $reports->count() }} au total</span></div>

@@ -254,6 +254,75 @@ class FundingTest extends TestCase
         $this->assertTrue($citizen->fundings->first()->is($funding));
     }
 
+    public function test_each_preset_amount_is_persisted_and_reported(): void
+    {
+        $citizen = $this->citoyen();
+        $project = $this->collectingProject(['target_budget' => 100000]);
+
+        foreach ([20, 100] as $preset) {
+            $this->actingAs($citizen)->post(route('projects.fundings.store', $project), ['amount' => (string) $preset, 'amount_other' => ''])
+                ->assertSessionHasNoErrors();
+
+            $funding = Funding::latest('id')->first();
+            $this->assertEquals($preset, $funding->amount);
+            $this->assertSame("Merci ! Votre contribution de {$preset} TND ({$funding->reference}) est enregistrée. Paiement simulé.", session('status'));
+        }
+
+        $this->assertDatabaseCount('fundings', 2);
+    }
+
+    public function test_zero_negative_and_missing_amounts_are_rejected(): void
+    {
+        $citizen = $this->citoyen();
+        $project = $this->collectingProject();
+
+        foreach ([['amount' => '0'], ['amount' => '-20'], ['amount' => ''], [], ['amount_other' => 'abc']] as $data) {
+            $this->actingAs($citizen)->post(route('projects.fundings.store', $project), $data)
+                ->assertSessionHasErrors('amount')
+                ->assertSessionMissing('status');
+        }
+
+        $this->assertDatabaseCount('fundings', 0);
+    }
+
+    public function test_citizen_contribution_appears_in_the_back_office(): void
+    {
+        $citizen = User::factory()->citoyen()->create(['name' => 'Sana Ben Ali']);
+        $project = $this->collectingProject(['title' => 'Réservoir de La Soukra']);
+
+        $this->actingAs($citizen)->post(route('projects.fundings.store', $project), ['amount' => '20']);
+        $funding = Funding::sole();
+
+        $this->actingAs($this->staff())->get(route('admin.fundings.index'))
+            ->assertOk()
+            ->assertSee($funding->reference)
+            ->assertSee('Sana Ben Ali')
+            ->assertSee('compte citoyen');
+
+        $this->actingAs($this->staff())->get(route('admin.projects.show', $project))
+            ->assertOk()
+            ->assertSee($funding->reference)
+            ->assertSee($citizen->email);
+    }
+
+    public function test_funding_index_button_opens_the_create_form_and_new_record_is_listed(): void
+    {
+        $project = $this->collectingProject(['title' => 'Station de pompage solaire de Raoued']);
+        $staff = $this->staff();
+
+        $this->actingAs($staff)->get(route('admin.fundings.index'))
+            ->assertSee('href="'.route('admin.fundings.create').'"', false);
+
+        $this->actingAs($staff)->get(route('admin.fundings.create'))->assertOk()->assertSee('Nouveau financement');
+
+        $this->actingAs($staff)->post(route('admin.fundings.store'), $this->validData($project, ['donor_name' => 'Atlas Ingénierie', 'source_type' => 'entreprise']))
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($staff)->get(route('admin.fundings.index'))
+            ->assertSee('Atlas Ingénierie')
+            ->assertSee(Funding::sole()->reference);
+    }
+
     public function test_other_amount_replaces_the_preset_amount(): void
     {
         $citizen = $this->citoyen();

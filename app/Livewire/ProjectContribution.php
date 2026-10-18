@@ -65,6 +65,11 @@ class ProjectContribution extends Component
             return $this->redirectRoute('login');
         }
 
+        // Même règle que la route POST (middleware « verified ») : adresse e-mail vérifiée
+        if (! $user->hasVerifiedEmail()) {
+            return $this->redirectRoute('verification.notice');
+        }
+
         $this->thanks = null;
 
         if ($refusal = $this->project->contributionRefusal()) {

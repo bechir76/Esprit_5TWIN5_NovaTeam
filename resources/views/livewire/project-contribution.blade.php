@@ -10,6 +10,10 @@
 
   @if ($project->acceptsContributions())
     @auth
+    @unless (auth()->user()->hasVerifiedEmail())
+    {{-- Adresse e-mail non vérifiée : contribution impossible (middleware « verified ») --}}
+    <a class="btn btn-primary justify-center" href="{{ route('verification.notice') }}">Vérifiez votre adresse e-mail pour contribuer</a>
+    @else
     <form class="flex flex-col gap-3.5" method="POST" action="{{ route('projects.fundings.store', $project) }}" wire:submit="contribute" novalidate>
       @csrf
       <div @class(['flex flex-col gap-1.5', '[&_.input]:border-crit [&_.input]:bg-crit-soft' => $errors->hasAny(['amount', 'project'])])>
@@ -29,6 +33,7 @@
         <span wire:loading wire:target="contribute">Enregistrement…</span>
       </button>
     </form>
+    @endunless
     <p class="text-[.8rem] text-muted">Paiement simulé : aucun montant n'est réellement débité.</p>
     @else
     <a class="btn btn-primary justify-center" href="{{ route('login') }}">Connectez-vous pour contribuer</a>

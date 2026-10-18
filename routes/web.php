@@ -38,18 +38,18 @@ Route::get('/carte', InfrastructureMapController::class)->name('map');
 // Module 4 : page publique qualité de l'eau
 Route::get('/qualite-eau', WaterQualityController::class)->name('water-quality');
 
-// Module 2 : suivi public des incidents ; le signalement est réservé aux utilisateurs connectés
+// Module 2 : suivi public des incidents ; le signalement est réservé aux utilisateurs connectés à l'e-mail vérifié
 Route::get('/incidents', [IncidentReportController::class, 'index'])->name('incidents.index');
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/incidents/signaler', [IncidentReportController::class, 'create'])->name('incidents.create');
     Route::post('/incidents', [IncidentReportController::class, 'store'])->name('incidents.store');
 });
 
-// Module 3 : projets publics (URL par slug) ; la contribution est réservée aux utilisateurs connectés
+// Module 3 : projets publics (URL par slug) ; la contribution est réservée aux utilisateurs connectés à l'e-mail vérifié
 Route::get('/projets', [ProjectController::class, 'index'])->name('projects.index');
 Route::get('/projets/{project:slug}', [ProjectController::class, 'show'])->name('projects.show');
 Route::post('/projets/{project:slug}/contributions', [ProjectController::class, 'contribute'])
-    ->middleware('auth')
+    ->middleware(['auth', 'verified'])
     ->name('projects.fundings.store');
 
 // Profil (Breeze) : partagé avec le back office, la vue dépend de la route

@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Http\Middleware\EnsureUserIsStaff;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
@@ -46,6 +47,16 @@ class AppServiceProvider extends ServiceProvider
             ->action('Choisir un nouveau mot de passe', route('password.reset', ['token' => $token, 'email' => $user->email]))
             ->line('Ce lien expire dans '.config('auth.passwords.users.expire').' minutes.')
             ->line('Si vous n\'êtes pas à l\'origine de cette demande, ignorez ce message.')
+            ->salutation('L\'équipe AquaSecure'));
+
+        // E-mail de vérification envoyé à l'inscription (User implémente MustVerifyEmail) ; lien signé valable 60 min
+        VerifyEmail::toMailUsing(fn (User $user, string $url) => (new MailMessage)
+            ->subject('Vérifiez votre adresse e-mail AquaSecure')
+            ->greeting('Bonjour '.$user->name.',')
+            ->line('Merci pour votre inscription. Confirmez votre adresse e-mail pour pouvoir signaler un incident et soutenir les projets.')
+            ->action('Vérifier mon adresse e-mail', $url)
+            ->line('Ce lien expire dans '.config('auth.verification.expire', 60).' minutes.')
+            ->line('Si vous n\'avez pas créé de compte, ignorez ce message.')
             ->salutation('L\'équipe AquaSecure'));
     }
 }

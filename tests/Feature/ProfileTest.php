@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ProfileTest extends TestCase
@@ -110,5 +112,54 @@ class ProfileTest extends TestCase
 
         $this->assertNotNull($user->fresh());
         $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_user_can_upload_replace_and_remove_a_profile_photo(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->citoyen()->create();
+        $data = ['name' => $user->name, 'email' => $user->email];
+
+        $this->actingAs($user)->put(route('profile.update'), $data + ['avatar' => UploadedFile::fake()->image('moi.jpg')])
+            ->assertSessionHasNoErrors();
+        $first = $user->fresh()->avatar_path;
+        $this->assertStringStartsWith('avatars/', $first);
+        Storage::disk('public')->assertExists($first);
+        $this->actingAs($user)->get(route('profile.edit'))->assertSee($user->fresh()->avatarUrl());
+
+        // Remplacement : l'ancien fichier est supprimé
+        $this->actingAs($user)->put(route('profile.update'), $data + ['avatar' => UploadedFile::fake()->image('moi2.png')]);
+        Storage::disk('public')->assertMissing($first);
+
+        // Retrait
+        $this->actingAs($user)->put(route('profile.update'), $data + ['remove_avatar' => '1']);
+        $this->assertNull($user->fresh()->avatar_path);
+        $this->assertSame([], Storage::disk('public')->allFiles());
+    }
+
+    public function test_profile_photo_is_validated_and_deleted_with_the_account(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->citoyen()->create();
+
+        $this->actingAs($user)->put(route('profile.update'), ['name' => $user->name, 'email' => $user->email, 'avatar' => UploadedFile::fake()->create('cv.pdf', 50, 'application/pdf')])
+            ->assertSessionHasErrors(['avatar' => 'Le fichier doit être une image.']);
+
+        $this->actingAs($user)->put(route('profile.update'), ['name' => $user->name, 'email' => $user->email, 'avatar' => UploadedFile::fake()->image('moi.jpg')]);
+        $path = $user->fresh()->avatar_path;
+
+        $this->actingAs($user)->delete(route('profile.destroy'), ['password' => 'password']);
+        Storage::disk('public')->assertMissing($path);
+    }
+
+    public function test_staff_can_upload_a_photo_from_the_back_office_profile(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->gestionnaire()->create();
+
+        $this->actingAs($user)->put(route('admin.profile.update'), ['name' => $user->name, 'email' => $user->email, 'avatar' => UploadedFile::fake()->image('moi.jpg')])
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($user)->get(route('admin.dashboard'))->assertSee($user->fresh()->avatarUrl());
     }
 }

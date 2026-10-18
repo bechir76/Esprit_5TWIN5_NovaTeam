@@ -74,6 +74,22 @@ class ProjectContributionTest extends TestCase
         $this->assertEquals(100, Funding::sole()->amount);
     }
 
+    public function test_selected_preset_is_the_persisted_and_reported_amount(): void
+    {
+        foreach (['20', '100'] as $preset) {
+            $project = $this->project();
+
+            Livewire::actingAs(User::factory()->citoyen()->create())
+                ->test(ProjectContribution::class, ['project' => $project])
+                ->set('amount', $preset)
+                ->call('contribute')
+                ->assertHasNoErrors()
+                ->assertSee("Merci ! Votre contribution de {$preset} TND");
+
+            $this->assertEquals((int) $preset, $project->fundings()->sole()->amount);
+        }
+    }
+
     public function test_amount_is_validated_in_real_time(): void
     {
         Livewire::actingAs(User::factory()->citoyen()->create())

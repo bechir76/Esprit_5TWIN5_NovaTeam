@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -37,13 +38,31 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $user = $request->user();
+        $user->fill($request->safe()->except(['avatar', 'remove_avatar']));
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        // Nouvelle photo ou retrait : l'ancien fichier est supprimé
+        if ($request->hasFile('avatar') || $request->boolean('remove_avatar')) {
+            $user->deleteAvatar();
+            $user->avatar_path = $request->hasFile('avatar')
+                ? $request->file('avatar')->store(User::AVATAR_DIRECTORY, User::AVATAR_DISK)
+                : null;
         }
 
-        $request->user()->save();
+        $emailChanged = $user->isDirty('email');
+
+        if ($emailChanged) {
+            $user->email_verified_at = null;
+        }
+
+        $user->save();
+
+        // Nouvelle adresse : nouveau lien de vérification (MustVerifyEmail)
+        if ($emailChanged) {
+            $user->sendEmailVerificationNotification();
+
+            return back()->with('status', 'Profil mis à jour. Un lien de vérification a été envoyé à votre nouvelle adresse.');
+        }
 
         return back()->with('status', 'Profil mis à jour.');
     }

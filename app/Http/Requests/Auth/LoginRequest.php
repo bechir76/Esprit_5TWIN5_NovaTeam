@@ -47,11 +47,15 @@ class LoginRequest extends FormRequest
      * Les identifiants sont vérifiés avant la connexion : un compte suspendu, ou un citoyen sur le back office,
      * n'ouvre jamais de session.
      *
+     * Avec la 2FA activée, la session n'est pas encore ouverte : l'utilisateur est mémorisé
+     * (login.id) et doit saisir un code TOTP ou de récupération (TwoFactorChallengeController).
+     *
      * @param  bool  $staffOnly  true pour le back office : le rôle citoyen est refusé
+     * @return bool true si l'utilisateur est connecté, false si un code 2FA est attendu
      *
      * @throws ValidationException
      */
-    public function authenticate(bool $staffOnly = false): void
+    public function authenticate(bool $staffOnly = false): bool
     {
         $this->ensureIsNotRateLimited();
 
@@ -76,7 +80,19 @@ class LoginRequest extends FormRequest
             throw ValidationException::withMessages(['email' => trans('auth.staff_only')]);
         }
 
+        if ($user->hasTwoFactorEnabled()) {
+            $this->session()->put([
+                'login.id' => $user->getKey(),
+                'login.remember' => $this->boolean('remember'),
+                'login.staff' => $staffOnly,
+            ]);
+
+            return false;
+        }
+
         Auth::login($user, $this->boolean('remember'));
+
+        return true;
     }
 
     /**

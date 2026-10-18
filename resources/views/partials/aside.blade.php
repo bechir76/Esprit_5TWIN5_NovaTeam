@@ -61,7 +61,7 @@
     @php($me = auth()->user())
     <div class="mt-auto border-t border-white/10 px-2.5 pt-3.5 pb-1 text-[.78rem] text-[#7FA6C0]">
       <div class="mb-2.5 flex items-center gap-2.5">
-        <span class="grid size-9 flex-none place-items-center rounded-full text-[.8rem] font-bold text-white" style="background:{{ $me->role->color() }}">{{ $me->initials() }}</span>
+        <span class="grid size-9 flex-none place-items-center rounded-full text-[.8rem] font-bold text-white" style="background:{{ $me->role->color() }}"><x-avatar :user="$me" /></span>
         <span class="min-w-0 leading-tight"><strong class="text-[.84rem] text-white">{{ $me->name }}</strong><br>{{ $me->role->label() }}</span>
       </div>
       {{ $me->organization ?? 'AquaSecure' }}<br><span class="font-mono">v1.0 · Laravel 12</span>

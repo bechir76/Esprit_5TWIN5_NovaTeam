@@ -30,7 +30,7 @@
 
         <div class="relative" x-data="{ open: false }" @click.outside="open = false" @keydown.escape.window="open = false">
           <button class="flex items-center gap-2.5 rounded-[9px] p-1 text-ink" type="button" @click="open = ! open" aria-haspopup="true" :aria-expanded="open">
-            <span class="grid size-9 flex-none place-items-center rounded-full text-[.8rem] font-bold text-white" style="background:{{ $me->role->color() }}">{{ $me->initials() }}</span>
+            <span class="grid size-9 flex-none place-items-center rounded-full text-[.8rem] font-bold text-white" style="background:{{ $me->role->color() }}"><x-avatar :user="$me" /></span>
             <span class="hidden text-left leading-tight min-[981px]:block"><strong class="text-[.86rem]">{{ $me->name }}</strong><br><span class="text-[.76rem] text-muted">{{ $me->role->label() }}</span></span>
           </button>
           <div class="absolute top-[50px] right-0 z-30 min-w-[210px] rounded-card border border-line bg-surface p-1.5 shadow-drop" x-show="open" x-cloak x-transition.opacity>
@@ -82,7 +82,7 @@
     @else
     @php $me = auth()->user(); @endphp
     <div class="relative" x-data="{ open: false }" @click.outside="open = false" @keydown.escape.window="open = false">
-      <button class="grid size-9 place-items-center rounded-full bg-teal text-[.85rem] font-bold text-[#06302C]" type="button" @click="open = ! open" aria-haspopup="true" :aria-expanded="open">{{ $me->initials() }}</button>
+      <button class="grid size-9 place-items-center rounded-full bg-teal text-[.85rem] font-bold text-[#06302C]" type="button" @click="open = ! open" aria-haspopup="true" :aria-expanded="open"><x-avatar :user="$me" /></button>
       <div class="absolute right-0 top-[46px] min-w-[200px] rounded-card border border-line bg-surface p-1.5 shadow-card" x-show="open" x-cloak x-transition.opacity>
         <div class="px-3 py-2.5"><strong>{{ $me->name }}</strong><div class="text-[.82rem] text-muted">{{ $me->role->label() }}@if ($me->organization) · {{ $me->organization }}@endif</div></div>
         <hr class="my-1.5 border-line">
