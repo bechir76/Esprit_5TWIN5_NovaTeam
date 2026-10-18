@@ -64,8 +64,9 @@ class IncidentTest extends TestCase
         ]));
 
         $incident = Incident::sole();
-        $response->assertRedirect(route('incidents.index'))
-            ->assertSessionHas('status', "Incident {$incident->reference} signalé avec succès.");
+        // Redirection vers la page de suivi (lien signé, utilisable sans connexion)
+        $response->assertRedirect($incident->trackingUrl())
+            ->assertSessionHas('status', "Incident {$incident->reference} signalé avec succès. Conservez ce lien pour suivre son traitement.");
 
         $this->assertMatchesRegularExpression('/^INC-\d{4}-0001$/', $incident->reference);
         $this->assertSame(IncidentStatus::Signale, $incident->status);

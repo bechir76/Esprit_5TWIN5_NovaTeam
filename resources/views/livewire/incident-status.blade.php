@@ -3,7 +3,8 @@
   @csrf
   @method('PATCH')
   <h2>Traitement</h2>
-  <x-form.select name="status" label="Statut" :value="$status" :options="$options" wire:model="status" hint="Le passage à « Résolu » enregistre la date de résolution." />
+  <x-form.select name="status" label="Statut" :value="$status" :options="$options" wire:model="status" hint="Seules les étapes autorisées par le workflow sont proposées. « Résolu » enregistre la date de résolution." />
+  <x-form.textarea name="comment" label="Commentaire (historique)" :value="$comment" wire:model="comment" rows="2" hint="Facultatif. Visible par le personnel uniquement ; le citoyen est prévenu du nouveau statut." />
   @if ($incident->resolved_at)
   <span class="text-[.78rem] text-muted">Résolu le <span class="font-mono">{{ $incident->resolved_at->format('d/m/Y H:i') }}</span></span>
   @endif

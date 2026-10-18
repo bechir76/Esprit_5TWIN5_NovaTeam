@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Enums\IncidentSeverity;
 use App\Enums\IncidentType;
+use App\Models\Incident;
 use App\Models\Infrastructure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -33,6 +34,9 @@ class StoreIncidentReportRequest extends FormRequest
             'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
             'latitude' => ['nullable', 'required_with:longitude', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'required_with:latitude', 'numeric', 'between:-180,180'],
+            // Doublon probable signalé à la soumission : « autre problème » ou « je rejoins ce signalement »
+            'duplicate_decision' => ['nullable', Rule::in(['new', 'join'])],
+            'duplicate_of' => ['nullable', 'required_if:duplicate_decision,join', 'integer', Rule::exists(Incident::class, 'id')],
         ];
     }
 

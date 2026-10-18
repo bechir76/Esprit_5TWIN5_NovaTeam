@@ -48,7 +48,13 @@ Route::get('/incidents', [IncidentReportController::class, 'index'])->name('inci
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/incidents/signaler', [IncidentReportController::class, 'create'])->name('incidents.create');
     Route::post('/incidents', [IncidentReportController::class, 'store'])->name('incidents.store');
+    Route::post('/incidents/ia/classer', [IncidentReportController::class, 'classify'])
+        ->middleware('throttle:'.config('ai.rate_limit').',1')
+        ->name('incidents.classify');
 });
+// Module 2 : carte publique et suivi d'un signalement (lien signé, sans connexion, ou déclarant connecté)
+Route::get('/incidents/carte', [IncidentReportController::class, 'map'])->name('incidents.map');
+Route::get('/incidents/{incident}/suivi', [IncidentReportController::class, 'track'])->name('incidents.track');
 
 // Module 3 : projets publics (URL par slug), transparence et vérification des reçus (publiques)
 Route::get('/projets', [ProjectController::class, 'index'])->name('projects.index');
@@ -114,8 +120,21 @@ Route::prefix('admin')->name('admin.')->group(function () use ($stub) {
         Route::get('/mesures', [MeasurementController::class, 'index'])->name('measurements.index');
 
         // Incidents et interventions (module 2) : le statut de l'incident se change depuis sa fiche
+        // Carte, statistiques, export CSV et groupes d'incidents liés (déclarés avant la ressource)
+        Route::get('/incidents/carte', [IncidentController::class, 'map'])->name('incidents.map');
+        Route::get('/incidents/statistiques', [IncidentController::class, 'stats'])->name('incidents.stats');
+        Route::get('/incidents/export', [IncidentController::class, 'export'])->name('incidents.export');
+        Route::post('/incidents/groupes/recalculer', [IncidentController::class, 'recluster'])->name('incidents.recluster');
+        Route::post('/incidents/groupes/{cluster}/regrouper', [IncidentController::class, 'groupCluster'])->name('incidents.group');
         Route::patch('/incidents/{incident}/statut', [IncidentController::class, 'updateStatus'])->name('incidents.status');
         Route::resource('incidents', IncidentController::class);
+        // Planning (calendrier), rapport PDF et rédaction du rapport assistée par l'IA
+        Route::get('/interventions/planning', [InterventionController::class, 'planning'])->name('interventions.planning');
+        Route::get('/interventions/calendrier', [InterventionController::class, 'events'])->name('interventions.events');
+        Route::get('/interventions/{intervention}/pdf', [InterventionController::class, 'pdf'])->name('interventions.pdf');
+        Route::post('/interventions/{intervention}/ia/rapport', [InterventionController::class, 'draftReport'])
+            ->middleware('throttle:'.config('ai.rate_limit').',1')
+            ->name('interventions.draft-report');
         Route::resource('interventions', InterventionController::class);
 
         // Projets de rénovation et financements (module 3) : URL /admin/projets et /admin/financements,

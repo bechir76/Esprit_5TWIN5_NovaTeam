@@ -6,7 +6,7 @@
 <section data-page="intervention" class="flex flex-col gap-3">
   <x-page-header :title="$intervention->title" :crumb="'Console / Interventions / '.$intervention->incident->reference">
     <x-slot:badges><x-status-badge :value="$intervention->status->label()" :variant="$intervention->status->badge()" dot /></x-slot:badges>
-    <div class="flex flex-wrap items-center gap-2.5"><a class="btn btn-ghost" href="{{ route('admin.interventions.edit', $intervention) }}">Modifier</a><button class="btn btn-danger" type="button" data-del="{{ $intervention->title }}" data-action="{{ route('admin.interventions.destroy', $intervention) }}">Supprimer</button></div>
+    <div class="flex flex-wrap items-center gap-2.5">@can('downloadReport', $intervention)<a class="btn btn-ghost" href="{{ route('admin.interventions.pdf', $intervention) }}">Rapport PDF</a>@endcan<a class="btn btn-ghost" href="{{ route('admin.interventions.edit', $intervention) }}">Modifier</a><button class="btn btn-danger" type="button" data-del="{{ $intervention->title }}" data-action="{{ route('admin.interventions.destroy', $intervention) }}">Supprimer</button></div>
   </x-page-header>
   <div class="grid items-start gap-[18px] min-[1101px]:grid-cols-[minmax(0,1fr)_340px]">
     <div class="flex flex-col gap-[18px]">
@@ -18,8 +18,10 @@
           <div><span class="caption block">Prévue le</span><span class="font-mono">{{ $intervention->scheduled_at->format('d/m/Y H:i') }}</span></div>
           <div><span class="caption block">Durée estimée</span><span class="font-mono">{{ $intervention->formattedDuration() }}</span></div>
           <div><span class="caption block">Terminée le</span><span class="font-mono">{{ $intervention->completed_at?->format('d/m/Y H:i') ?? '—' }}</span></div>
+          <div><span class="caption block">Démarrée le</span><span class="font-mono">{{ $intervention->started_at?->format('d/m/Y H:i') ?? '—' }}</span></div>
+          <div><span class="caption block">Durée réelle</span><span class="font-mono">{{ $intervention->actualHours() !== null ? number_format($intervention->actualHours(), 1, ',', ' ').' h' : '—' }}</span></div>
         </div>
-        <div><span class="caption block">Compte rendu</span><p class="mt-1.5 max-w-[70ch]">{{ $intervention->report ?: 'Aucun compte rendu pour le moment.' }}</p></div>
+        <div><span class="caption block">Compte rendu</span><p class="mt-1.5 max-w-[70ch] whitespace-pre-line">{{ $intervention->report ?: 'Aucun compte rendu pour le moment.' }}</p></div>
       </div>
     </div>
     <aside class="flex flex-col gap-[18px]">

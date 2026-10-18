@@ -25,8 +25,11 @@
                 ['admin.dashboard', 'Tableau de bord', 'dash', null, 'admin.dashboard'],
                 ['admin.zones.index', 'Zones', 'zone', null, 'admin.zones.*'],
                 ['admin.infrastructures.index', 'Infrastructures', 'infra', null, 'admin.infrastructures.*'],
-                ['admin.incidents.index', 'Incidents', 'inc', \App\Models\Incident::open()->count(), 'admin.incidents.*'],
-                ['admin.interventions.index', 'Interventions', 'tool', null, 'admin.interventions.*'],
+                ['admin.incidents.index', 'Incidents', 'inc', \App\Models\Incident::open()->count(), 'admin.incidents.index|admin.incidents.create|admin.incidents.show|admin.incidents.edit'],
+                ['admin.incidents.map', 'Carte des incidents', 'zone', null, 'admin.incidents.map'],
+                ['admin.incidents.stats', 'Statistiques incidents', 'dash', null, 'admin.incidents.stats'],
+                ['admin.interventions.index', 'Interventions', 'tool', null, 'admin.interventions.index|admin.interventions.create|admin.interventions.show|admin.interventions.edit'],
+                ['admin.interventions.planning', 'Planning', 'tool', null, 'admin.interventions.planning'],
                 ['admin.water-analyses.index', 'Qualité de l\'eau', 'water', null, 'admin.water-analyses.*|admin.measurements.*'],
             ],
             'Financement' => [

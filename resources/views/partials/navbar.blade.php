@@ -10,7 +10,9 @@
       </div>
 
       <div class="ml-auto flex items-center gap-2.5">
-        {{-- Alertes (données de démonstration) --}}
+        {{-- Notifications (module incidents : cloche partagée console / site citoyen) --}}
+        @include('partials.notifications-bell')
+
         <div class="relative" x-data="{ open: false }" @click.outside="open = false" @keydown.escape.window="open = false">
           <button class="relative grid size-[38px] place-items-center rounded-[9px] border border-line bg-surface text-ink" type="button" @click="open = ! open" :aria-expanded="open" aria-label="Notifications">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>
@@ -81,6 +83,7 @@
     <a class="btn btn-ghost btn-sm" href="{{ route('login') }}">Connexion</a>
     @else
     @php $me = auth()->user(); @endphp
+    @include('partials.notifications-bell')
     <div class="relative" x-data="{ open: false }" @click.outside="open = false" @keydown.escape.window="open = false">
       <button class="grid size-9 place-items-center rounded-full bg-teal text-[.85rem] font-bold text-[#06302C]" type="button" @click="open = ! open" aria-haspopup="true" :aria-expanded="open"><x-avatar :user="$me" /></button>
       <div class="absolute right-0 top-[46px] min-w-[200px] rounded-card border border-line bg-surface p-1.5 shadow-card" x-show="open" x-cloak x-transition.opacity>

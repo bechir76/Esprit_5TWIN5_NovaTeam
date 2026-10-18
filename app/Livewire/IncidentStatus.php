@@ -3,8 +3,10 @@
 namespace App\Livewire;
 
 use App\Enums\IncidentStatus as Status;
+use App\Exceptions\InvalidIncidentTransition;
 use App\Http\Requests\Admin\UpdateIncidentStatusRequest;
 use App\Models\Incident;
+use App\Services\Incidents\IncidentWorkflow;
 use Illuminate\View\View;
 use Livewire\Component;
 
@@ -18,6 +20,9 @@ class IncidentStatus extends Component
     public Incident $incident;
 
     public string $status = '';
+
+    /** Commentaire enregistré dans l'historique des statuts. */
+    public string $comment = '';
 
     /** Message de confirmation du dernier enregistrement. */
     public ?string $message = null;
@@ -38,13 +43,16 @@ class IncidentStatus extends Component
 
         $status = Status::from($this->status);
 
-        if ($conflict = $this->incident->statusConflict($status)) {
-            $this->addError('status', $conflict);
+        // Workflow : transition autorisée, interventions compatibles, historique et notification du déclarant
+        try {
+            app(IncidentWorkflow::class)->transition($this->incident, $status, auth()->user(), $this->comment);
+        } catch (InvalidIncidentTransition $e) {
+            $this->addError('status', $e->getMessage());
 
             return;
         }
 
-        $this->incident->update(['status' => $status]);
+        $this->comment = '';
 
         $this->message = $this->incident->statusChangedMessage();
 
@@ -55,7 +63,9 @@ class IncidentStatus extends Component
     public function render(): View
     {
         return view('livewire.incident-status', [
-            'options' => Status::options(),
+            // Statut actuel et transitions autorisées uniquement
+            'options' => collect(app(IncidentWorkflow::class)->availableStatuses($this->incident))
+                ->mapWithKeys(fn (Status $s) => [$s->value => $s->label()])->all(),
         ]);
     }
 }

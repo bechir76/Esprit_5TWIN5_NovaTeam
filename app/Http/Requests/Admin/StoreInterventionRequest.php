@@ -7,6 +7,7 @@ use App\Enums\Role;
 use App\Models\Incident;
 use App\Models\Intervention;
 use App\Models\User;
+use App\Rules\TeamIsAvailable;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -27,7 +28,8 @@ class StoreInterventionRequest extends FormRequest
         return [
             'incident_id' => ['required', 'integer', Rule::exists(Incident::class, 'id')],
             'title' => ['required', 'string', 'min:5', 'max:150'],
-            'team' => ['required', 'string', Rule::in(Intervention::TEAMS)],
+            // Une même équipe ne peut pas avoir deux interventions actives qui se chevauchent (date prévue + durée)
+            'team' => ['required', 'string', Rule::in(Intervention::TEAMS), new TeamIsAvailable($this->route('intervention')?->id)],
             // Le technicien assigné doit avoir le rôle technicien
             'technician_id' => ['nullable', 'integer', Rule::exists(User::class, 'id')->where('role', Role::Technicien->value)],
             'scheduled_at' => ['required', 'date'],

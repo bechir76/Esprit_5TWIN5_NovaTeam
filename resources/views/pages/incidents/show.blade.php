@@ -7,12 +7,13 @@
     $eye = $icon('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>');
     $edit = $icon('<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>');
     $trash = $icon('<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>');
+    $pdf = $icon('<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M14 3v6h6M9 15h6"/>');
 @endphp
 
 @section('content')
 <section data-page="incident" class="flex flex-col gap-3">
   <x-page-header :title="$incident->title" :crumb="'Console / Incidents / '.$incident->reference">
-    <x-slot:badges><x-status-badge :value="$incident->severity->label()" :variant="$incident->severity->badge()" dot /><span class="badge {{ $incident->status->badge() }}" x-data="{ label: @js($incident->status->label()), variant: @js($incident->status->badge()) }" x-on:incident-status-updated.window="$el.classList.remove(variant); variant = $event.detail.variant; $el.classList.add(variant); label = $event.detail.label" x-text="label">{{ $incident->status->label() }}</span></x-slot:badges>
+    <x-slot:badges><x-status-badge :value="$incident->severity->label()" :variant="$incident->severity->badge()" dot /><span class="badge {{ $incident->status->badge() }}" x-data="{ label: @js($incident->status->label()), variant: @js($incident->status->badge()) }" x-on:incident-status-updated.window="$el.classList.remove(variant); variant = $event.detail.variant; $el.classList.add(variant); label = $event.detail.label" x-text="label">{{ $incident->status->label() }}</span>@if ($incident->isOverdue())<span class="badge" style="background:#E63946;color:#fff">En retard</span>@endif</x-slot:badges>
     <div class="flex flex-wrap items-center gap-2.5"><a class="btn btn-ghost" href="{{ route('admin.incidents.edit', $incident) }}">Modifier</a><button class="btn btn-danger" type="button" data-del="{{ $incident->reference }}" data-action="{{ route('admin.incidents.destroy', $incident) }}">Supprimer</button></div>
   </x-page-header>
   <div class="grid items-start gap-[18px] min-[1101px]:grid-cols-[minmax(0,1fr)_340px]">
@@ -62,6 +63,7 @@
             <td><div class="flex justify-end gap-1.5">
               <a class="btn-icon" href="{{ route('admin.interventions.show', $intervention) }}" title="Voir">{!! $eye !!}</a>
               <a class="btn-icon" href="{{ route('admin.interventions.edit', $intervention) }}" title="Modifier">{!! $edit !!}</a>
+              @if ($intervention->report)<a class="btn-icon" href="{{ route('admin.interventions.pdf', $intervention) }}" title="Rapport PDF">{!! $pdf !!}</a>@endif
               <button class="btn-icon btn-icon-danger" type="button" data-del="{{ $intervention->title }}" data-action="{{ route('admin.interventions.destroy', ['intervention' => $intervention, 'retour' => 'incident']) }}" title="Supprimer">{!! $trash !!}</button>
             </div></td>
           </tr>
@@ -71,21 +73,76 @@
         </tbody></table></div>
       </div>
 
+      {{-- Historique des statuts (status_history, écrit par IncidentObserver) --}}
       <div class="card"><div class="card-header"><h2>Historique</h2></div><div class="p-[18px] timeline">
-        <div class="timeline-item is-done"><strong>Signalement reçu</strong>@if ($incident->user) de {{ $incident->user->name }}@endif<div class="text-muted">{{ $incident->created_at->format('d/m H:i') }}</div></div>
-        @foreach ($incident->interventions as $intervention)
-        <div @class(['timeline-item', 'is-done' => ! $intervention->status->isActive()])><strong>{{ $intervention->title }}</strong> · {{ $intervention->team }} : {{ mb_strtolower($intervention->status->label()) }}<div class="text-muted">{{ ($intervention->completed_at ?? $intervention->scheduled_at)->format('d/m H:i') }}</div></div>
-        @endforeach
-        @if ($incident->resolved_at)
-        <div class="timeline-item is-done pb-0"><strong>Incident résolu</strong><div class="text-muted">{{ $incident->resolved_at->format('d/m H:i') }}</div></div>
-        @else
-        <div class="timeline-item pb-0"><strong>Statut actuel</strong> : {{ $incident->status->label() }}<div class="text-muted">mis à jour le {{ $incident->updated_at->format('d/m H:i') }}</div></div>
-        @endif
+        @forelse ($incident->status_history ?? [] as $entry)
+        @php($to = \App\Enums\IncidentStatus::tryFrom($entry['to'] ?? ''))
+        @php($from = \App\Enums\IncidentStatus::tryFrom($entry['from'] ?? ''))
+        <div @class(['timeline-item', 'is-done' => ! $loop->last, 'pb-0' => $loop->last])>
+          <strong>{{ $loop->first ? 'Signalement reçu' : ($to?->label() ?? $entry['to']) }}</strong>@if (! $loop->first && $from)<span class="text-muted"> (depuis « {{ $from->label() }} »)</span>@endif
+          @if (! empty($entry['by_name']))<span class="text-muted"> · {{ $entry['by_name'] }}</span>@endif
+          <div class="text-muted font-mono text-[.8rem]">{{ \Illuminate\Support\Carbon::parse($entry['at'])->format('d/m/Y H:i') }}</div>
+          @if (! empty($entry['comment']))<div class="mt-1 text-[.86rem]">« {{ $entry['comment'] }} »</div>@endif
+        </div>
+        @empty
+        <div class="timeline-item pb-0"><strong>Signalement reçu</strong><div class="text-muted">{{ $incident->created_at->format('d/m H:i') }}</div></div>
+        @endforelse
       </div></div>
+
+      @if ($incident->duplicateOf || $incident->duplicates->isNotEmpty() || $linked->isNotEmpty())
+      <div class="card p-[18px] flex flex-col gap-3"><h2>Signalements liés</h2>
+        @if ($incident->duplicateOf)
+        <p>Doublon de <a class="underline font-mono" href="{{ route('admin.incidents.show', $incident->duplicateOf) }}">{{ $incident->duplicateOf->reference }}</a> · {{ $incident->duplicateOf->title }}</p>
+        @endif
+        @if ($incident->duplicates->isNotEmpty())
+        <div><span class="caption block">Doublons rattachés ({{ $incident->reports_count }} signalements au total)</span>
+          <div class="mt-1.5 flex flex-wrap gap-2 text-[.82rem]">@foreach ($incident->duplicates as $duplicate)<a class="rounded bg-surface-2 px-2 py-1 font-mono" href="{{ route('admin.incidents.show', $duplicate) }}">{{ $duplicate->reference }}</a>@endforeach</div></div>
+        @endif
+        @if ($linked->isNotEmpty())
+        <div><span class="caption block">Incidents proches du même groupe ({{ $incident->cluster_key }})</span>
+          @if ($incident->cluster_diagnosis)<p class="mt-1 text-[.88rem]">✦ {{ $incident->cluster_diagnosis }}</p>@endif
+          <div class="mt-1.5 flex flex-wrap gap-2 text-[.82rem]">@foreach ($linked as $other)<a class="rounded bg-surface-2 px-2 py-1 font-mono" href="{{ route('admin.incidents.show', $other) }}">{{ $other->reference }} · {{ $other->type->label() }}</a>@endforeach</div>
+          @if ($incident->status->isOpen())
+          <form class="mt-2.5" method="POST" action="{{ route('admin.incidents.group', $incident->cluster_key) }}">@csrf<button class="btn btn-ghost btn-sm" type="submit">Regrouper les interventions</button></form>
+          @endif
+        </div>
+        @endif
+      </div>
+      @endif
     </div>
     <aside class="flex flex-col gap-[18px]">
       {{-- Changement de statut sans rechargement : composant Livewire (app/Livewire/IncidentStatus.php) --}}
       <livewire:incident-status :incident="$incident" />
+      @if ($incident->canSuggestResolution())
+      <div class="callout callout-info">Toutes les interventions sont terminées : l'incident peut sans doute passer « Résolu ».</div>
+      @endif
+      <div class="card p-[18px] flex flex-col gap-2.5"><h2>Délai</h2>
+        <div><span class="caption block">Délai cible ({{ $incident->severity->label() }})</span><span class="font-mono">{{ $incident->slaHours() }} h · échéance {{ $incident->slaDeadline()->format('d/m/Y H:i') }}</span></div>
+        @if ($incident->isOverdue())
+        <span class="font-semibold text-crit">Délai cible dépassé{{ $incident->sla_breached_at ? ' (alerte envoyée le '.$incident->sla_breached_at->format('d/m H:i').')' : '' }}</span>
+        @endif
+        @if ($estimate)
+        <div><span class="caption block">Résolution estimée</span><span>{{ \App\Services\Incidents\ResolutionEstimator::label($estimate['hours']) }} après le signalement</span>
+          <div class="text-[.76rem] text-muted">{{ match ($estimate['basis']) { 'type_severity' => 'Médiane de '.$estimate['samples'].' incidents de même type et gravité.', 'global' => 'Médiane de '.$estimate['samples'].' incidents résolus.', default => 'Historique insuffisant : délai cible.' } }}</div></div>
+        @endif
+      </div>
+      {{-- B1 / B2 / B6 : analyse IA en arrière-plan (AnalyzeIncident) ; indicative, les agents décident --}}
+      <div class="card p-[18px] flex flex-col gap-2.5"><h2>✦ Analyse IA</h2>
+        @if ($incident->ai_analyzed_at)
+        <div class="flex items-center gap-2.5"><strong @class(['font-mono text-xl', 'text-crit' => $incident->ai_urgency_score >= 8])>{{ $incident->ai_urgency_score }}/10</strong><span class="text-[.82rem] text-muted">score d'urgence</span></div>
+        @if ($incident->ai_urgency_reason)<p class="text-[.84rem] text-muted">{{ $incident->ai_urgency_reason }}</p>@endif
+        @if ($incident->ai_summary)<p class="text-[.9rem]">{{ $incident->ai_summary }}</p>@endif
+        @php($aiType = \App\Enums\IncidentType::tryFrom((string) $incident->ai_type))
+        @php($aiSeverity = \App\Enums\IncidentSeverity::tryFrom((string) $incident->ai_severity))
+        @if ($aiType && $aiSeverity)
+        <div class="text-[.84rem]">Suggestion : {{ $aiType->label() }} · {{ $aiSeverity->label() }}@if ($aiType !== $incident->type || $aiSeverity !== $incident->severity) <span class="text-muted">(différente des valeurs retenues)</span>@endif</div>
+        @endif
+        @if ($incident->ai_photo_analysis)<p class="text-[.84rem]">{{ $incident->ai_photo_analysis }}</p>@endif
+        <span class="text-[.74rem] text-muted">Analysé le {{ $incident->ai_analyzed_at->format('d/m/Y H:i') }}</span>
+        @else
+        <p class="text-[.86rem] text-muted">Analyse en attente (file de traitement).</p>
+        @endif
+      </div>
       <div class="card p-[18px] flex flex-col gap-3"><h2>Localisation</h2>
         <x-location-map :latitude="$incident->latitude" :longitude="$incident->longitude" :color="$incident->severity->color()" :height="160" />
         @if ($incident->hasCoordinates())

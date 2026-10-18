@@ -4,7 +4,10 @@ namespace App\Providers;
 
 use App\Http\Middleware\EnsureUserIsStaff;
 use App\Models\User;
+use App\Services\Ai\AnthropicIncidentVisionClient;
 use App\Services\Ai\AnthropicLlmClient;
+use App\Services\Ai\IncidentVisionClient;
+use App\Services\Ai\NullIncidentVisionClient;
 use App\Services\Ai\LlmClient;
 use App\Services\Ai\NullLlmClient;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -27,6 +30,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(LlmClient::class, fn () => filled(config('ai.api_key'))
             ? new AnthropicLlmClient(config('ai.api_key'), config('ai.model'), config('ai.timeout'))
             : new NullLlmClient);
+
+        // Module incidents : analyse de la photo des signalements (Claude si une clé est configurée et la vision activée)
+        $this->app->bind(IncidentVisionClient::class, fn () => filled(config('ai.api_key')) && config('ai.incidents.vision')
+            ? new AnthropicIncidentVisionClient(config('ai.api_key'), config('ai.model'), config('ai.timeout'))
+            : new NullIncidentVisionClient);
     }
 
     /**
