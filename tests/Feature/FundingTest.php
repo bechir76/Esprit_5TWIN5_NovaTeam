@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\FundingSource;
+use App\Enums\FundingStatus;
 use App\Enums\ProjectStatus;
 use App\Models\Funding;
 use App\Models\Project;
@@ -10,6 +11,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
+/** Financements côté back office : CRUD, recalcul du statut, export CSV, tableau financier, profil. */
 class FundingTest extends TestCase
 {
     use RefreshDatabase;
@@ -26,10 +28,10 @@ class FundingTest extends TestCase
         return User::factory()->citoyen()->create();
     }
 
-    /** Projet en collecte ouvert depuis un mois, objectif 1 000 TND. */
+    /** Projet en collecte ouvert depuis un mois, objectif 1 000 DT. */
     private function collectingProject(array $attributes = []): Project
     {
-        return Project::factory()->collecting()->create(array_merge([
+        return Project::factory()->open()->create(array_merge([
             'target_budget' => 1000,
             'start_date' => today()->subMonth(),
             'end_date' => today()->addMonth(),
@@ -59,6 +61,7 @@ class FundingTest extends TestCase
         $this->actingAs($this->citoyen())->get(route('admin.fundings.index'))->assertForbidden();
         $this->actingAs($this->citoyen())->post(route('admin.fundings.store'), $this->validData($funding->project))->assertForbidden();
         $this->actingAs($this->citoyen())->delete(route('admin.fundings.destroy', $funding))->assertForbidden();
+        $this->actingAs($this->citoyen())->get(route('admin.fundings.export'))->assertForbidden();
         $this->assertDatabaseCount('fundings', 1);
     }
 
@@ -69,6 +72,8 @@ class FundingTest extends TestCase
         Project::factory()->funded()->create(['title' => 'Capteurs dans 12 écoles', 'target_budget' => 48000]);
         $collecting = $this->collectingProject(['title' => 'Station de pompage de Raoued']);
         Funding::factory()->for($collecting)->fromCitizen()->create(['amount' => 250, 'donor_name' => 'Sana Ben Ali']);
+        // Un don en attente de paiement n'est pas compté
+        Funding::factory()->for($collecting)->fromCitizen()->pending()->create(['amount' => 500]);
 
         $this->actingAs($this->staff())->get(route('admin.fundings.index'))
             ->assertOk()
@@ -76,7 +81,7 @@ class FundingTest extends TestCase
             ->assertSee('Sana Ben Ali')
             ->assertSee('99 %')
             ->assertSee('Capteurs dans 12 écoles')
-            ->assertSee('250 / 1 000 TND');
+            ->assertSee('250 / 1 000 DT');
     }
 
     public function test_funding_index_can_be_filtered(): void
@@ -85,12 +90,15 @@ class FundingTest extends TestCase
         $mornag = $this->collectingProject(['title' => 'Forage de Mornag']);
         Funding::factory()->for($soukra)->association()->create(['donor_name' => 'Association Eau Vive', 'funded_at' => today()->subDays(20)]);
         Funding::factory()->for($mornag)->company()->create(['donor_name' => 'Atlas Ingénierie', 'funded_at' => today()]);
+        Funding::factory()->for($mornag)->fromCitizen()->pending()->create(['donor_name' => 'Mariem Gharbi']);
         $staff = $this->staff();
 
         $this->actingAs($staff)->get(route('admin.fundings.index', ['projet' => $soukra->id]))
             ->assertSee('Association Eau Vive')->assertDontSee('Atlas Ingénierie');
         $this->actingAs($staff)->get(route('admin.fundings.index', ['source' => 'entreprise']))
             ->assertSee('Atlas Ingénierie')->assertDontSee('Association Eau Vive');
+        $this->actingAs($staff)->get(route('admin.fundings.index', ['statut' => 'pending']))
+            ->assertSee('Mariem Gharbi')->assertDontSee('Atlas Ingénierie');
         $this->actingAs($staff)->get(route('admin.fundings.index', ['du' => today()->subDays(2)->format('Y-m-d')]))
             ->assertSee('Atlas Ingénierie')->assertDontSee('Association Eau Vive');
         $this->actingAs($staff)->get(route('admin.fundings.index', ['au' => today()->subDays(10)->format('Y-m-d')]))
@@ -113,6 +121,9 @@ class FundingTest extends TestCase
 
         $this->assertMatchesRegularExpression('/^FIN-\d{4}-0001$/', $funding->reference);
         $this->assertSame(FundingSource::Municipalite, $funding->source_type);
+        // Financement saisi par le personnel : encaissé
+        $this->assertSame(FundingStatus::Confirmed, $funding->status);
+        $this->assertNotNull($funding->paid_at);
         $this->assertSame('400.00', $funding->amount);
         $this->assertNull($funding->user_id);
         $this->assertTrue($funding->project->is($project));
@@ -161,14 +172,28 @@ class FundingTest extends TestCase
         $this->actingAs($staff)->get(route('admin.fundings.show', $funding))->assertOk()->assertSee($funding->reference)->assertSee('Association Eau Vive');
         $this->actingAs($staff)->get(route('admin.fundings.edit', $funding))->assertOk();
 
-        $this->actingAs($staff)->put(route('admin.fundings.update', $funding), $this->validData($project, ['amount' => '350,5', 'donor_name' => 'Réseau Enviro-Tunisie']))
+        $this->actingAs($staff)->put(route('admin.fundings.update', $funding), $this->validData($project, ['amount' => '350,5', 'donor_name' => 'Réseau Enviro-Tunisie', 'is_anonymous' => '1']))
             ->assertRedirect(route('admin.fundings.show', $funding));
         $this->assertSame('350.50', $funding->fresh()->amount);
         $this->assertSame('Réseau Enviro-Tunisie', $funding->fresh()->donor_name);
+        $this->assertTrue($funding->fresh()->is_anonymous);
 
         $this->actingAs($staff)->delete(route('admin.fundings.destroy', ['funding' => $funding, 'retour' => 'projet']))
             ->assertRedirect(route('admin.projects.show', $project));
         $this->assertModelMissing($funding);
+    }
+
+    public function test_online_donation_amount_cannot_be_edited_nor_deleted(): void
+    {
+        $project = $this->collectingProject();
+        $donation = Funding::factory()->for($project)->fromCitizen()->confirmed()->create(['amount' => 50]);
+        $staff = $this->staff();
+
+        $this->actingAs($staff)->put(route('admin.fundings.update', $donation), $this->validData($project, ['source_type' => 'citoyen', 'amount' => '500']))
+            ->assertSessionHasErrors(['amount' => 'Le montant, le projet et la source d\'un don payé en ligne ne peuvent pas être modifiés.']);
+
+        $this->actingAs($staff)->delete(route('admin.fundings.destroy', $donation))->assertSessionHas('error');
+        $this->assertModelExists($donation);
     }
 
     // ---------------------------------------------------------------- Statut automatique du projet
@@ -178,10 +203,10 @@ class FundingTest extends TestCase
         $project = $this->collectingProject();
 
         $this->actingAs($this->staff())->post(route('admin.fundings.store'), $this->validData($project, ['amount' => '600']));
-        $this->assertSame(ProjectStatus::EnCollecte, $project->fresh()->status);
+        $this->assertSame(ProjectStatus::Open, $project->fresh()->status);
 
         $this->actingAs($this->staff())->post(route('admin.fundings.store'), $this->validData($project, ['amount' => '400']));
-        $this->assertSame(ProjectStatus::Finance, $project->fresh()->status);
+        $this->assertSame(ProjectStatus::Funded, $project->fresh()->status);
     }
 
     public function test_status_is_recalculated_after_update_and_deletion(): void
@@ -189,15 +214,15 @@ class FundingTest extends TestCase
         $project = $this->collectingProject();
         $big = Funding::factory()->for($project)->municipal()->create(['amount' => 800]);
         $small = Funding::factory()->for($project)->association()->create(['amount' => 200]);
-        $this->assertSame(ProjectStatus::Finance, $project->fresh()->status);
+        $this->assertSame(ProjectStatus::Funded, $project->fresh()->status);
 
         // Suppression : l'objectif n'est plus atteint
         $this->actingAs($this->staff())->delete(route('admin.fundings.destroy', $small));
-        $this->assertSame(ProjectStatus::EnCollecte, $project->fresh()->status);
+        $this->assertSame(ProjectStatus::Open, $project->fresh()->status);
 
         // Modification du montant : de nouveau financé
         $this->actingAs($this->staff())->put(route('admin.fundings.update', $big), $this->validData($project, ['amount' => '1000']));
-        $this->assertSame(ProjectStatus::Finance, $project->fresh()->status);
+        $this->assertSame(ProjectStatus::Funded, $project->fresh()->status);
     }
 
     public function test_moving_a_funding_recalculates_both_projects(): void
@@ -205,17 +230,17 @@ class FundingTest extends TestCase
         $from = $this->collectingProject();
         $to = $this->collectingProject();
         $funding = Funding::factory()->for($from)->municipal()->create(['amount' => 1000]);
-        $this->assertSame(ProjectStatus::Finance, $from->fresh()->status);
+        $this->assertSame(ProjectStatus::Funded, $from->fresh()->status);
 
         $this->actingAs($this->staff())->put(route('admin.fundings.update', $funding), $this->validData($to, ['amount' => '1000']));
 
-        $this->assertSame(ProjectStatus::EnCollecte, $from->fresh()->status);
-        $this->assertSame(ProjectStatus::Finance, $to->fresh()->status);
+        $this->assertSame(ProjectStatus::Open, $from->fresh()->status);
+        $this->assertSame(ProjectStatus::Funded, $to->fresh()->status);
     }
 
     public function test_other_statuses_are_not_changed_automatically(): void
     {
-        foreach ([ProjectStatus::Brouillon, ProjectStatus::EnTravaux, ProjectStatus::Termine] as $status) {
+        foreach ([ProjectStatus::Draft, ProjectStatus::InProgress, ProjectStatus::Completed, ProjectStatus::Failed] as $status) {
             $project = $this->collectingProject(['status' => $status]);
             $funding = Funding::factory()->for($project)->municipal()->create(['amount' => 1500]);
             $this->assertSame($status, $project->fresh()->status);
@@ -225,195 +250,56 @@ class FundingTest extends TestCase
         }
     }
 
-    // ---------------------------------------------------------------- Contribution citoyenne
-
-    public function test_citizen_can_contribute_to_a_collecting_project(): void
+    public function test_pending_donations_do_not_fund_the_project(): void
     {
-        $citizen = $this->citoyen();
-        $other = $this->citoyen();
         $project = $this->collectingProject();
+        Funding::factory()->for($project)->fromCitizen()->pending()->create(['amount' => 1000]);
 
-        $response = $this->actingAs($citizen)->post(route('projects.fundings.store', $project), [
-            'amount' => '50',
-            // Champs non autorisés ignorés : contributeur, source et date fixés côté serveur
-            'user_id' => $other->id,
-            'source_type' => 'municipalite',
-            'donor_name' => 'Faux nom',
-            'funded_at' => '2020-01-01',
-        ]);
-
-        $funding = Funding::sole();
-        $response->assertRedirect(route('projects.show', $project))
-            ->assertSessionHas('status', "Merci ! Votre contribution de 50 TND ({$funding->reference}) est enregistrée. Paiement simulé.");
-
-        $this->assertSame(FundingSource::Citoyen, $funding->source_type);
-        $this->assertTrue($funding->user->is($citizen));
-        $this->assertSame($citizen->name, $funding->donor_name);
-        $this->assertSame('50.00', $funding->amount);
-        $this->assertTrue($funding->funded_at->isToday());
-        $this->assertTrue($citizen->fundings->first()->is($funding));
+        $this->assertSame(ProjectStatus::Open, $project->fresh()->status);
+        $this->assertSame(0, $project->fresh()->progress_percent);
     }
 
-    public function test_each_preset_amount_is_persisted_and_reported(): void
+    // ---------------------------------------------------------------- Export, tableau financier, profil
+
+    public function test_staff_can_export_fundings_as_csv(): void
     {
-        $citizen = $this->citoyen();
-        $project = $this->collectingProject(['target_budget' => 100000]);
-
-        foreach ([20, 100] as $preset) {
-            $this->actingAs($citizen)->post(route('projects.fundings.store', $project), ['amount' => (string) $preset, 'amount_other' => ''])
-                ->assertSessionHasNoErrors();
-
-            $funding = Funding::latest('id')->first();
-            $this->assertEquals($preset, $funding->amount);
-            $this->assertSame("Merci ! Votre contribution de {$preset} TND ({$funding->reference}) est enregistrée. Paiement simulé.", session('status'));
-        }
-
-        $this->assertDatabaseCount('fundings', 2);
-    }
-
-    public function test_zero_negative_and_missing_amounts_are_rejected(): void
-    {
-        $citizen = $this->citoyen();
-        $project = $this->collectingProject();
-
-        foreach ([['amount' => '0'], ['amount' => '-20'], ['amount' => ''], [], ['amount_other' => 'abc']] as $data) {
-            $this->actingAs($citizen)->post(route('projects.fundings.store', $project), $data)
-                ->assertSessionHasErrors('amount')
-                ->assertSessionMissing('status');
-        }
-
-        $this->assertDatabaseCount('fundings', 0);
-    }
-
-    public function test_citizen_contribution_appears_in_the_back_office(): void
-    {
-        $citizen = User::factory()->citoyen()->create(['name' => 'Sana Ben Ali']);
         $project = $this->collectingProject(['title' => 'Réservoir de La Soukra']);
+        Funding::factory()->for($project)->association()->create(['donor_name' => 'Association Eau Vive', 'amount' => 1500]);
+        Funding::factory()->for($project)->company()->create(['donor_name' => 'Atlas Ingénierie']);
 
-        $this->actingAs($citizen)->post(route('projects.fundings.store', $project), ['amount' => '20']);
-        $funding = Funding::sole();
+        $response = $this->actingAs($this->staff())->get(route('admin.fundings.export', ['source' => 'association']));
 
-        $this->actingAs($this->staff())->get(route('admin.fundings.index'))
+        $response->assertOk()->assertHeader('content-type', 'text/csv; charset=UTF-8');
+        $csv = $response->streamedContent();
+        $this->assertStringContainsString('Référence;Date;Projet;Source;Financeur', $csv);
+        $this->assertStringContainsString('Association Eau Vive', $csv);
+        $this->assertStringContainsString('1500,00', $csv);
+        $this->assertStringNotContainsString('Atlas Ingénierie', $csv);
+    }
+
+    public function test_financial_dashboard_shows_sources_almost_funded_and_anonymous_donors(): void
+    {
+        $almost = Project::factory()->almostFunded()->create(['title' => 'Capteurs connectés de Raoued']);
+        Funding::factory()->for($almost)->fromCitizen()->anonymous()->create(['amount' => 300, 'donor_name' => 'Nom Caché']);
+        // Collecte sans don récent proche de son échéance : en retard
+        $this->collectingProject(['title' => 'Forage de Mornag', 'end_date' => today()->addDays(5)]);
+
+        $this->actingAs($this->staff())->get(route('admin.fundings.dashboard'))
             ->assertOk()
-            ->assertSee($funding->reference)
-            ->assertSee('Sana Ben Ali')
-            ->assertSee('compte citoyen');
-
-        $this->actingAs($this->staff())->get(route('admin.projects.show', $project))
-            ->assertOk()
-            ->assertSee($funding->reference)
-            ->assertSee($citizen->email);
+            ->assertSee('Capteurs connectés de Raoued')
+            ->assertSee('Forage de Mornag')
+            ->assertSee('Anonyme')
+            ->assertDontSee('Nom Caché')
+            ->assertSee('monthlyChart', false);
     }
 
-    public function test_funding_index_button_opens_the_create_form_and_new_record_is_listed(): void
-    {
-        $project = $this->collectingProject(['title' => 'Station de pompage solaire de Raoued']);
-        $staff = $this->staff();
-
-        $this->actingAs($staff)->get(route('admin.fundings.index'))
-            ->assertSee('href="'.route('admin.fundings.create').'"', false);
-
-        $this->actingAs($staff)->get(route('admin.fundings.create'))->assertOk()->assertSee('Nouveau financement');
-
-        $this->actingAs($staff)->post(route('admin.fundings.store'), $this->validData($project, ['donor_name' => 'Atlas Ingénierie', 'source_type' => 'entreprise']))
-            ->assertSessionHasNoErrors();
-
-        $this->actingAs($staff)->get(route('admin.fundings.index'))
-            ->assertSee('Atlas Ingénierie')
-            ->assertSee(Funding::sole()->reference);
-    }
-
-    public function test_other_amount_replaces_the_preset_amount(): void
-    {
-        $citizen = $this->citoyen();
-        $project = $this->collectingProject();
-
-        $this->actingAs($citizen)->post(route('projects.fundings.store', $project), ['amount' => '20', 'amount_other' => '75,5'])
-            ->assertSessionHasNoErrors();
-
-        $this->assertSame('75.50', Funding::sole()->amount);
-    }
-
-    public function test_contribution_amount_limits(): void
-    {
-        $citizen = $this->citoyen();
-        $project = $this->collectingProject(['target_budget' => 100000]);
-
-        $this->actingAs($citizen)->post(route('projects.fundings.store', $project), ['amount' => '4.99'])
-            ->assertSessionHasErrors(['amount' => 'La contribution minimale est de 5 TND.']);
-        $this->actingAs($citizen)->post(route('projects.fundings.store', $project), ['amount' => '10001'])
-            ->assertSessionHasErrors(['amount' => 'La contribution ne peut pas dépasser 10 000 TND.']);
-        $this->actingAs($citizen)->post(route('projects.fundings.store', $project), ['amount' => 'beaucoup'])
-            ->assertSessionHasErrors('amount');
-
-        $this->assertDatabaseCount('fundings', 0);
-
-        $this->actingAs($citizen)->post(route('projects.fundings.store', $project), ['amount' => '10000'])->assertSessionHasNoErrors();
-        $this->actingAs($citizen)->post(route('projects.fundings.store', $project), ['amount' => '5'])->assertSessionHasNoErrors();
-        $this->assertDatabaseCount('fundings', 2);
-    }
-
-    public function test_contribution_to_a_project_not_collecting_is_rejected(): void
-    {
-        $citizen = $this->citoyen();
-
-        foreach ([ProjectStatus::Finance, ProjectStatus::EnTravaux, ProjectStatus::Termine] as $status) {
-            $project = $this->collectingProject(['status' => $status]);
-
-            $this->actingAs($citizen)->post(route('projects.fundings.store', $project), ['amount' => '50'])
-                ->assertSessionHasErrors(['project' => "Ce projet n'accepte pas de contributions : il est « {$status->label()} »."]);
-        }
-
-        // Brouillon et projet masqué : rejetés aussi
-        $this->actingAs($citizen)->post(route('projects.fundings.store', $this->collectingProject(['status' => ProjectStatus::Brouillon])), ['amount' => '50'])
-            ->assertSessionHasErrors('project');
-        $this->actingAs($citizen)->post(route('projects.fundings.store', $this->collectingProject(['is_public' => false])), ['amount' => '50'])
-            ->assertSessionHasErrors('project');
-
-        $this->assertDatabaseCount('fundings', 0);
-    }
-
-    public function test_contribution_to_an_expired_project_is_rejected(): void
-    {
-        $project = Project::factory()->collecting()->expired()->create();
-
-        $this->actingAs($this->citoyen())->post(route('projects.fundings.store', $project), ['amount' => '50'])
-            ->assertSessionHasErrors(['project' => 'La collecte de ce projet est terminée depuis le '.$project->end_date->format('d/m/Y').'.']);
-
-        $this->assertDatabaseCount('fundings', 0);
-    }
-
-    public function test_contribution_to_a_missing_project_returns_404(): void
-    {
-        $this->actingAs($this->citoyen())->post('/projets/projet-inexistant/contributions', ['amount' => '50'])->assertNotFound();
-    }
-
-    public function test_guest_cannot_contribute(): void
-    {
-        $project = $this->collectingProject();
-
-        $this->post(route('projects.fundings.store', $project), ['amount' => '50'])->assertRedirect(route('login'));
-        $this->assertDatabaseCount('fundings', 0);
-    }
-
-    public function test_citizen_contribution_can_complete_the_funding(): void
-    {
-        $project = $this->collectingProject();
-        Funding::factory()->for($project)->municipal()->create(['amount' => 980]);
-
-        $this->actingAs($this->citoyen())->post(route('projects.fundings.store', $project), ['amount' => '20']);
-
-        $this->assertSame(ProjectStatus::Finance, $project->fresh()->status);
-    }
-
-    // ---------------------------------------------------------------- Profil, accueil, tableau de bord
-
-    public function test_profile_lists_the_citizen_contributions(): void
+    public function test_profile_lists_the_citizen_contributions_with_receipts(): void
     {
         $citizen = $this->citoyen();
         $project = $this->collectingProject(['title' => 'Réservoir de La Soukra']);
-        $mine = Funding::factory()->for($project)->fromCitizen($citizen)->create(['amount' => 50]);
-        Funding::factory()->for($project)->fromCitizen($citizen)->create(['amount' => 30]);
+        $mine = Funding::factory()->for($project)->fromCitizen($citizen)->confirmed()->create(['amount' => 50]);
+        Funding::factory()->for($project)->fromCitizen($citizen)->confirmed()->create(['amount' => 30]);
+        Funding::factory()->for($project)->fromCitizen($citizen)->pending()->create(['amount' => 70]);
         Funding::factory()->for($project)->fromCitizen()->create(['amount' => 999]);
 
         $this->get(route('profile.edit'))->assertRedirect(route('login'));
@@ -422,14 +308,31 @@ class FundingTest extends TestCase
             ->assertOk()
             ->assertSee('Réservoir de La Soukra')
             ->assertSee($mine->reference)
-            ->assertSee('80 TND')
-            ->assertDontSee('999 TND');
+            ->assertSee($mine->fresh()->receipt_number)
+            ->assertSee(route('fundings.receipt', $mine), false)
+            ->assertSee('En attente')
+            ->assertSee('80 DT')
+            ->assertDontSee('999 DT');
     }
 
-    public function test_home_and_dashboard_use_real_project_data(): void
+    public function test_citizen_user_relationship(): void
+    {
+        $citizen = $this->citoyen();
+        $funding = Funding::factory()->fromCitizen($citizen)->create();
+
+        $this->assertTrue($funding->user->is($citizen));
+        $this->assertTrue($citizen->fundings->first()->is($funding));
+
+        // Le compte supprimé laisse le don (user_id null)
+        $citizen->delete();
+        $this->assertNull($funding->fresh()->user_id);
+    }
+
+    public function test_home_and_dashboard_use_confirmed_project_data(): void
     {
         $project = $this->collectingProject(['title' => 'Station de pompage solaire de Raoued']);
         Funding::factory()->for($project)->municipal()->create(['amount' => 600]);
+        Funding::factory()->for($project)->fromCitizen()->pending()->create(['amount' => 300]);
         Project::factory()->funded()->create(['target_budget' => 4000]);
 
         $this->get(route('home'))
@@ -441,6 +344,6 @@ class FundingTest extends TestCase
             ->assertOk()
             ->assertSee('4 600')
             ->assertSee('Station de pompage solaire de Raoued')
-            ->assertSee('600 / 1 000 TND');
+            ->assertSee('600 / 1 000 DT');
     }
 }

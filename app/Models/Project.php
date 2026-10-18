@@ -2,30 +2,34 @@
 
 namespace App\Models;
 
-use App\Enums\FundingSource;
+use App\Enums\FundingStatus;
 use App\Enums\ProjectCategory;
 use App\Enums\ProjectStatus;
+use App\Events\ProjectStatusChanged;
+use App\Exceptions\InvalidProjectTransition;
 use Database\Factories\ProjectFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * Projet de rénovation financé par des municipalités, associations, entreprises et citoyens (Funding),
  * éventuellement rattaché à une infrastructure.
  *
- * Le slug est généré depuis le titre ; le statut passe de « en collecte » à « financé »
- * (et inversement) à chaque enregistrement ou suppression d'un financement (refreshStatus()).
+ * Cycle de vie contrôlé par ProjectStatus::transitions() : un changement interdit lève InvalidProjectTransition.
+ * Seuls les financements confirmés comptent dans le montant collecté. Journal d'audit : spatie/laravel-activitylog.
  */
 class Project extends Model
 {
     /** @use HasFactory<ProjectFactory> */
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     /** Disque et dossier des images : storage/app/public/projects (php artisan storage:link). */
     public const IMAGE_DISK = 'public';
@@ -46,6 +50,10 @@ class Project extends Model
         'image_path',
         'is_public',
         'infrastructure_id',
+        'ai_priority_score',
+        'ai_priority_reason',
+        'ai_scored_at',
+        'milestone_notified_at',
     ];
 
     /**
@@ -54,7 +62,7 @@ class Project extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'status' => 'brouillon',
+        'status' => 'draft',
         'is_public' => false,
     ];
 
@@ -68,16 +76,35 @@ class Project extends Model
         'start_date' => 'date',
         'end_date' => 'date',
         'is_public' => 'boolean',
+        'ai_priority_score' => 'integer',
+        'ai_scored_at' => 'datetime',
+        'milestone_notified_at' => 'datetime',
     ];
 
     // ---------------------------------------------------------------- Hooks
 
     protected static function booted(): void
     {
-        // Slug unique généré depuis le titre (à la création et quand le titre change)
         static::saving(function (self $project): void {
+            // Slug unique généré depuis le titre (à la création et quand le titre change)
             if (empty($project->slug) || $project->isDirty('title')) {
                 $project->slug = self::uniqueSlug($project->title, $project->id);
+            }
+
+            // Transition de statut contrôlée (un nouveau projet peut être créé dans n'importe quel statut)
+            if ($project->exists && $project->isDirty('status') && $project->getRawOriginal('status') !== null) {
+                $from = ProjectStatus::from($project->getRawOriginal('status'));
+
+                if (! $from->canTransitionTo($project->status)) {
+                    throw new InvalidProjectTransition($from, $project->status);
+                }
+            }
+        });
+
+        // Notifications des donateurs (financé, échoué, travaux commencés…)
+        static::updated(function (self $project): void {
+            if ($project->wasChanged('status')) {
+                ProjectStatusChanged::dispatch($project, ProjectStatus::from($project->getRawOriginal('status')));
             }
         });
 
@@ -85,6 +112,16 @@ class Project extends Model
         static::deleted(function (self $project): void {
             $project->deleteImage();
         });
+    }
+
+    /** Journal d'audit : qui, quand, avant / après pour les champs modifiables. */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('projects')
+            ->logOnly(['title', 'category', 'target_budget', 'start_date', 'end_date', 'status', 'is_public', 'infrastructure_id'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 
     // ---------------------------------------------------------------- Relations
@@ -105,11 +142,10 @@ class Project extends Model
         return $this->hasMany(Funding::class);
     }
 
-    // ---------------------------------------------------------------- Accesseurs
+    // ---------------------------------------------------------------- Montants (financements confirmés uniquement)
 
     /**
-     * Montant collecté : agrégat withSum('fundings', 'amount') s'il est chargé,
-     * sinon somme des financements chargés, sinon requête.
+     * Montant collecté : agrégat withCollected() s'il est chargé, sinon somme des financements confirmés.
      */
     public function getCollectedAmountAttribute(): float
     {
@@ -118,10 +154,20 @@ class Project extends Model
         }
 
         if ($this->relationLoaded('fundings')) {
-            return (float) $this->fundings->sum('amount');
+            return (float) $this->fundings->where('status', FundingStatus::Confirmed)->sum('amount');
         }
 
-        return (float) $this->fundings()->sum('amount');
+        return (float) $this->fundings()->confirmed()->sum('amount');
+    }
+
+    /** Nombre de donateurs (financements confirmés). */
+    public function getDonorsCountAttribute(): int
+    {
+        if (array_key_exists('donors_count', $this->attributes)) {
+            return (int) $this->attributes['donors_count'];
+        }
+
+        return $this->fundings()->confirmed()->count();
     }
 
     /** Avancement du financement en %, plafonné à 100. */
@@ -142,25 +188,51 @@ class Project extends Model
         return max(0, (int) today()->diffInDays($this->end_date, false));
     }
 
+    /**
+     * Reste à collecter ; avec $reserved, les dons en attente de paiement récents sont déduits
+     * (deux dons simultanés ne peuvent pas dépasser l'objectif).
+     */
+    public function remainingAmount(bool $reserved = false): float
+    {
+        $taken = (float) $this->fundings()->confirmed()->sum('amount');
+
+        if ($reserved) {
+            $taken += (float) $this->fundings()->reserved()->sum('amount');
+        }
+
+        return max(0, round((float) $this->target_budget - $taken, 2));
+    }
+
+    public function hasReachedTarget(): bool
+    {
+        return round((float) $this->fundings()->confirmed()->sum('amount'), 2) >= round((float) $this->target_budget, 2);
+    }
+
     /** Fin de collecte dépassée. */
     public function isExpired(): bool
     {
         return $this->end_date->lt(today());
     }
 
-    /** Ouvert aux contributions citoyennes : public, en collecte, non échu. */
+    /** Publié sur le site citoyen (public et sorti du brouillon). */
+    public function isPublished(): bool
+    {
+        return $this->is_public && $this->status !== ProjectStatus::Draft;
+    }
+
+    /** Ouvert aux dons citoyens : public, en collecte, non échu. */
     public function acceptsContributions(): bool
     {
-        return $this->is_public && $this->status === ProjectStatus::EnCollecte && ! $this->isExpired();
+        return $this->contributionRefusal() === null;
     }
 
     /**
-     * Raison pour laquelle le projet refuse une contribution citoyenne, ou null s'il l'accepte.
-     * Partagé par StoreContributionRequest (route POST) et le composant Livewire ProjectContribution.
+     * Raison pour laquelle le projet refuse un don citoyen, ou null s'il l'accepte.
+     * Partagé par StoreContributionRequest, le composant Livewire ProjectContribution et DonationService.
      */
     public function contributionRefusal(): ?string
     {
-        if (! $this->is_public || $this->status !== ProjectStatus::EnCollecte) {
+        if (! $this->is_public || $this->status !== ProjectStatus::Open) {
             return "Ce projet n'accepte pas de contributions : il est « {$this->status->label()} ».";
         }
 
@@ -172,18 +244,17 @@ class Project extends Model
     }
 
     /**
-     * Enregistre la contribution d'un citoyen (paiement simulé) : source, contributeur et date fixés ici.
-     * Le statut du projet (« en collecte » → « financé ») est recalculé par le hook saved du financement.
+     * Citoyens ayant donné au projet (dons encaissés ou remboursés) : destinataires des notifications.
+     *
+     * @return Collection<int, User>
      */
-    public function recordContribution(User $user, float|int|string $amount): Funding
+    public static function donorsOf(self $project): Collection
     {
-        return DB::transaction(fn () => $this->fundings()->create([
-            'source_type' => FundingSource::Citoyen,
-            'donor_name' => $user->name,
-            'user_id' => $user->id,
-            'amount' => $amount,
-            'funded_at' => today(),
-        ]));
+        return User::query()->whereIn('id', $project->fundings()
+            ->ofStatus([FundingStatus::Confirmed, FundingStatus::Refunded])
+            ->where('is_matching', false)
+            ->whereNotNull('user_id')
+            ->select('user_id'))->get();
     }
 
     /** Montant lisible sans unité : 168400 => « 168 400 », 50.5 => « 50,50 ». */
@@ -194,26 +265,34 @@ class Project extends Model
         return number_format($amount, $amount == floor($amount) ? 0 : 2, ',', ' ');
     }
 
-    // ---------------------------------------------------------------- Statut automatique
+    // ---------------------------------------------------------------- Cycle de vie
+
+    /** Change de statut en respectant ProjectStatus::transitions() (sinon InvalidProjectTransition). */
+    public function transitionTo(ProjectStatus $status): void
+    {
+        if (! $this->status->canTransitionTo($status)) {
+            throw new InvalidProjectTransition($this->status, $status);
+        }
+
+        if ($this->status !== $status) {
+            $this->update(['status' => $status]);
+        }
+    }
 
     /**
-     * Recalcule le statut après un changement de financement :
-     * « en collecte » → « financé » quand l'objectif est atteint,
-     * « financé » → « en collecte » s'il ne l'est plus. Les autres statuts ne sont pas modifiés.
+     * Recalcule le statut après un changement de financement confirmé :
+     * « en collecte » → « financé » quand l'objectif est atteint, « financé » → « en collecte » s'il ne l'est plus.
+     * Les autres statuts (brouillon, échoué, en travaux, terminé) ne sont jamais modifiés ici.
      */
     public function refreshStatus(): void
     {
-        $reached = round((float) $this->fundings()->sum('amount'), 2) >= round((float) $this->target_budget, 2);
+        $reached = $this->hasReachedTarget();
 
-        $status = match (true) {
-            $this->status === ProjectStatus::EnCollecte && $reached => ProjectStatus::Finance,
-            $this->status === ProjectStatus::Finance && ! $reached => ProjectStatus::EnCollecte,
+        match (true) {
+            $this->status === ProjectStatus::Open && $reached => $this->transitionTo(ProjectStatus::Funded),
+            $this->status === ProjectStatus::Funded && ! $reached => $this->transitionTo(ProjectStatus::Open),
             default => null,
         };
-
-        if ($status) {
-            $this->update(['status' => $status]);
-        }
     }
 
     // ---------------------------------------------------------------- Image
@@ -248,6 +327,13 @@ class Project extends Model
 
     // ---------------------------------------------------------------- Scopes
 
+    /** Montant collecté (dons confirmés) et nombre de donateurs, sans requête par projet. */
+    public function scopeWithCollected(Builder $query): void
+    {
+        $query->withSum(['fundings as fundings_sum_amount' => fn (Builder $q) => $q->confirmed()], 'amount')
+            ->withCount(['fundings as donors_count' => fn (Builder $q) => $q->confirmed()]);
+    }
+
     /** Recherche par titre ou description. */
     public function scopeSearch(Builder $query, ?string $term): void
     {
@@ -273,13 +359,13 @@ class Project extends Model
     /** Projets ouverts au financement citoyen : publics et en collecte. */
     public function scopeOpen(Builder $query): void
     {
-        $query->where('is_public', true)->ofStatus(ProjectStatus::EnCollecte);
+        $query->where('is_public', true)->ofStatus(ProjectStatus::Open);
     }
 
     /** Projets visibles sur le site citoyen : publics et sortis du brouillon. */
     public function scopePublished(Builder $query): void
     {
-        $query->where('is_public', true)->where('status', '!=', ProjectStatus::Brouillon->value);
+        $query->where('is_public', true)->where('status', '!=', ProjectStatus::Draft->value);
     }
 
     /** Projets d'une zone (via l'infrastructure liée) ; vide = toutes. */
@@ -290,10 +376,23 @@ class Project extends Model
         ));
     }
 
-    /** Tri par avancement du financement (montant collecté / objectif), le plus avancé d'abord ; « * 1.0 » évite la division entière de SQLite. */
-    public function scopeOrderByProgress(Builder $query): void
+    /** Projets dont le financement confirmé atteint au moins $percent % de l'objectif. */
+    public function scopeFundedAtLeast(Builder $query, int|float|null $percent): void
     {
-        $query->orderByRaw('(select coalesce(sum(fundings.amount), 0) from fundings where fundings.project_id = projects.id) * 1.0 / projects.target_budget desc');
+        $query->when($percent, fn (Builder $q) => $q->whereRaw(self::progressSql().' * 100 >= ?', [$percent]));
+    }
+
+    /** Tri par avancement du financement, le plus avancé d'abord. */
+    public function scopeOrderByProgress(Builder $query, string $direction = 'desc'): void
+    {
+        $query->orderByRaw(self::progressSql().' '.($direction === 'asc' ? 'asc' : 'desc'));
+    }
+
+    /** Avancement (0 à 1+) en SQL ; « * 1.0 » évite la division entière de SQLite. */
+    protected static function progressSql(): string
+    {
+        return "(select coalesce(sum(fundings.amount), 0) from fundings where fundings.project_id = projects.id and fundings.status = '"
+            .FundingStatus::Confirmed->value."') * 1.0 / projects.target_budget";
     }
 
     /** @return array<int, string> id => titre, pour <x-form.select> et les filtres */

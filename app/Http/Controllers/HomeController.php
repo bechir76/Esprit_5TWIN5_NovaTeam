@@ -48,7 +48,7 @@ class HomeController extends Controller
             'latestIncidents'      => $latestIncidents,
             'resolvedThisYear'     => Incident::ofStatus(IncidentStatus::Resolu)->whereYear('resolved_at', now()->year)->count(),
             // Module projets : collectes en cours (les plus proches de leur échéance) et projets financés
-            'homeProjects'         => Project::open()->whereDate('end_date', '>=', today())->with('infrastructure.zone')->withSum('fundings', 'amount')->orderBy('end_date')->limit(3)->get(),
+            'homeProjects'         => Project::open()->whereDate('end_date', '>=', today())->with('infrastructure.zone')->withCollected()->orderBy('end_date')->limit(3)->get(),
             'fundedProjectsCount'  => Project::ofStatus(ProjectStatus::fundedCases())->count(),
         ]);
     }

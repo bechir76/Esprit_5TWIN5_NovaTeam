@@ -9,7 +9,7 @@ use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Contribution d'un citoyen connecté depuis la fiche d'un projet (paiement simulé).
+ * Don d'un citoyen connecté depuis la fiche d'un projet (paiement Stripe Checkout).
  * Seul le montant vient du formulaire : projet (route), contributeur (session), source et date sont fixés côté serveur.
  * Règles et messages partagés avec le composant Livewire ProjectContribution.
  */
@@ -25,7 +25,7 @@ class StoreContributionRequest extends FormRequest
      */
     public function rules(): array
     {
-        return self::amountRules();
+        return self::amountRules() + ['anonymous' => ['boolean']];
     }
 
     /**
@@ -88,6 +88,6 @@ class StoreContributionRequest extends FormRequest
     {
         $amount = filled($this->input('amount_other')) ? $this->input('amount_other') : $this->input('amount');
 
-        $this->merge(['amount' => Funding::normalizeAmount($amount)]);
+        $this->merge(['amount' => Funding::normalizeAmount($amount), 'anonymous' => $this->boolean('anonymous')]);
     }
 }

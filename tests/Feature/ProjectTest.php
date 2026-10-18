@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Enums\FundingStatus;
 use App\Enums\ProjectCategory;
 use App\Enums\ProjectStatus;
+use App\Exceptions\InvalidProjectTransition;
 use App\Models\Funding;
 use App\Models\Infrastructure;
 use App\Models\Project;
@@ -40,7 +42,7 @@ class ProjectTest extends TestCase
             'target_budget' => '220 000',
             'start_date' => '2026-10-01',
             'end_date' => '2026-12-31',
-            'status' => 'en_collecte',
+            'status' => 'open',
             'is_public' => '1',
             'infrastructure_id' => null,
         ], $overrides);
@@ -94,7 +96,7 @@ class ProjectTest extends TestCase
 
         $this->actingAs($staff)->get(route('admin.projects.index', ['q' => 'Capteurs']))
             ->assertSee('Capteurs de qualité dans les écoles')->assertDontSee('Sectorisation du réseau');
-        $this->actingAs($staff)->get(route('admin.projects.index', ['status' => 'brouillon']))
+        $this->actingAs($staff)->get(route('admin.projects.index', ['status' => 'draft']))
             ->assertSee('Sectorisation du réseau')->assertDontSee('Capteurs de qualité dans les écoles');
         $this->actingAs($staff)->get(route('admin.projects.index', ['category' => 'surveillance']))
             ->assertSee('Capteurs de qualité dans les écoles')->assertDontSee('Sectorisation du réseau');
@@ -123,7 +125,7 @@ class ProjectTest extends TestCase
             ->assertSessionHas('status', 'Projet « Réhabilitation du réservoir de La Soukra » créé.');
 
         $this->assertSame('rehabilitation-du-reservoir-de-la-soukra', $project->slug);
-        $this->assertSame(ProjectStatus::EnCollecte, $project->status);
+        $this->assertSame(ProjectStatus::Open, $project->status);
         $this->assertSame(ProjectCategory::Decontamination, $project->category);
         $this->assertSame('220000.00', $project->target_budget);
         $this->assertTrue($project->is_public);
@@ -201,7 +203,7 @@ class ProjectTest extends TestCase
         $this->actingAs($this->staff())->get(route('admin.projects.show', $project))
             ->assertOk()
             ->assertSee('Municipalité de La Soukra')
-            ->assertSee('4 000 TND')
+            ->assertSee('4 000 DT')
             ->assertSee('40 %')
             ->assertSee($project->infrastructure->zone->name)
             ->assertSee('Ajouter un financement')
@@ -212,25 +214,107 @@ class ProjectTest extends TestCase
     {
         Storage::fake('public');
         $old = UploadedFile::fake()->image('old.jpg')->store(Project::IMAGE_DIRECTORY, Project::IMAGE_DISK);
-        $project = Project::factory()->create(['image_path' => $old]);
+        $project = Project::factory()->funded()->create(['image_path' => $old]);
 
         $this->actingAs($this->staff())->get(route('admin.projects.edit', $project))->assertOk()->assertSee($project->title);
 
         $this->actingAs($this->staff())->put(route('admin.projects.update', $project), $this->validData([
             'title' => 'Étanchéité du réservoir de Mégrine',
-            'status' => 'en_travaux',
+            'status' => 'in_progress',
             'image' => UploadedFile::fake()->image('new.png'),
         ]))->assertRedirect(route('admin.projects.show', $project));
 
         $project->refresh();
         $this->assertSame('Étanchéité du réservoir de Mégrine', $project->title);
         $this->assertSame('etancheite-du-reservoir-de-megrine', $project->slug);
-        $this->assertSame(ProjectStatus::EnTravaux, $project->status);
+        $this->assertSame(ProjectStatus::InProgress, $project->status);
         Storage::disk('public')->assertMissing($old);
         Storage::disk('public')->assertExists($project->image_path);
 
-        $this->actingAs($this->staff())->put(route('admin.projects.update', $project), $this->validData(['remove_image' => '1']));
+        $this->actingAs($this->staff())->put(route('admin.projects.update', $project), $this->validData(['status' => 'in_progress', 'remove_image' => '1']));
         $this->assertNull($project->fresh()->image_path);
+    }
+
+    // ---------------------------------------------------------------- Cycle de vie et autorisations
+
+    public function test_forbidden_transition_throws_and_is_rejected_by_the_form(): void
+    {
+        $draft = Project::factory()->draft()->create();
+
+        try {
+            $draft->transitionTo(ProjectStatus::Completed);
+            $this->fail('La transition brouillon → terminé aurait dû être refusée.');
+        } catch (InvalidProjectTransition $e) {
+            $this->assertSame(ProjectStatus::Draft, $e->from);
+        }
+
+        // Même garde dans le modèle quand le statut est modifié directement
+        $this->expectException(InvalidProjectTransition::class);
+        $draft->update(['status' => ProjectStatus::Funded]);
+    }
+
+    public function test_admin_form_only_accepts_reachable_statuses(): void
+    {
+        $staff = $this->staff();
+
+        // Création : brouillon ou en collecte uniquement
+        $this->actingAs($staff)->post(route('admin.projects.store'), $this->validData(['status' => 'funded']))
+            ->assertSessionHasErrors(['status' => 'Un nouveau projet est créé « Brouillon » ou « En collecte ».']);
+
+        // « Financé » exige l'objectif atteint par des dons confirmés
+        $project = Project::factory()->create(['target_budget' => 1000]);
+        $this->actingAs($staff)->put(route('admin.projects.update', $project), $this->validData(['status' => 'funded']))
+            ->assertSessionHasErrors('status');
+
+        // En collecte → terminé : interdit
+        $this->actingAs($staff)->put(route('admin.projects.update', $project), $this->validData(['status' => 'completed']))
+            ->assertSessionHasErrors(['status' => 'Passage interdit de « En collecte » à « Terminé ».']);
+
+        $this->assertSame(ProjectStatus::Open, $project->fresh()->status);
+    }
+
+    public function test_marking_a_project_failed_refunds_its_offline_fundings(): void
+    {
+        $project = Project::factory()->create(['target_budget' => 10000]);
+        $funding = Funding::factory()->for($project)->municipal()->create(['amount' => 2000]);
+
+        $this->actingAs($this->staff())->put(route('admin.projects.update', $project), $this->validData(['status' => 'failed']))
+            ->assertSessionHas('status', fn (string $message) => str_contains($message, '1 financement(s) remboursé(s)'));
+
+        $this->assertSame(ProjectStatus::Failed, $project->fresh()->status);
+        $this->assertSame(FundingStatus::Refunded, $funding->fresh()->status);
+    }
+
+    public function test_technician_cannot_manage_projects(): void
+    {
+        $technician = User::factory()->technicien()->create();
+
+        // Le technicien accède à la console (staff) mais pas aux projets (ProjectPolicy)
+        $this->actingAs($technician)->get(route('admin.projects.index'))->assertForbidden();
+        $this->actingAs($technician)->get(route('admin.fundings.index'))->assertForbidden();
+        $this->actingAs(User::factory()->admin()->create())->get(route('admin.projects.index'))->assertOk();
+    }
+
+    public function test_project_with_online_donations_cannot_be_deleted(): void
+    {
+        $project = Project::factory()->create();
+        Funding::factory()->for($project)->fromCitizen()->confirmed()->create(['amount' => 50]);
+
+        $this->actingAs($this->staff())->delete(route('admin.projects.destroy', $project))->assertSessionHas('error');
+        $this->assertModelExists($project);
+    }
+
+    public function test_only_confirmed_fundings_are_collected(): void
+    {
+        $project = Project::factory()->create(['target_budget' => 1000]);
+        Funding::factory()->for($project)->municipal()->create(['amount' => 300]);
+        Funding::factory()->for($project)->fromCitizen()->pending()->create(['amount' => 200]);
+        Funding::factory()->for($project)->fromCitizen()->refunded()->create(['amount' => 100]);
+
+        $loaded = Project::withCollected()->find($project->id);
+        $this->assertSame(300.0, $loaded->collected_amount);
+        $this->assertSame(1, $loaded->donors_count);
+        $this->assertSame(30, $project->fresh()->progress_percent);
     }
 
     public function test_deleting_a_project_removes_its_image_and_cascades_fundings(): void
@@ -276,7 +360,7 @@ class ProjectTest extends TestCase
         ]);
         Funding::factory()->for($project)->municipal()->create(['amount' => 1500]);
 
-        $project = Project::withSum('fundings', 'amount')->find($project->id);
+        $project = Project::withCollected()->find($project->id);
         $this->assertSame(1500.0, $project->collected_amount);
         $this->assertSame(100, $project->progress_percent);
         $this->assertSame(10, $project->days_left);
@@ -336,12 +420,12 @@ class ProjectTest extends TestCase
 
         $this->get('/projets/rehabilitation-du-reservoir-de-la-soukra')
             ->assertOk()
-            ->assertSee('120 050 TND')
-            ->assertSee('collectés sur 220 000 TND')
+            ->assertSee('120 050 DT')
+            ->assertSee('collectés sur 220 000 DT')
             ->assertSee('54 %')
             ->assertSee('Municipalité de La Soukra')
             ->assertSee($project->infrastructure->zone->name)
-            ->assertSee('Paiement simulé')
+            ->assertSee('Paiement sécurisé par Stripe')
             ->assertSee('Connectez-vous pour contribuer');
     }
 

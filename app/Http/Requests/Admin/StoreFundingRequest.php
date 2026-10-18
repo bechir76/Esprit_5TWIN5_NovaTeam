@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\FundingSource;
+use App\Models\Funding;
 use App\Models\Project;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Contracts\Validation\Validator;
@@ -15,7 +16,11 @@ class StoreFundingRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->isStaff();
+        $funding = $this->route('funding');
+
+        return $funding instanceof Funding
+            ? $this->user()->can('update', $funding)
+            : $this->user()->can('create', Funding::class);
     }
 
     /**
@@ -30,6 +35,7 @@ class StoreFundingRequest extends FormRequest
             'amount' => ['required', 'numeric', 'gt:0', 'max:9999999999'],
             'funded_at' => ['required', 'date', 'before_or_equal:today'],
             'note' => ['nullable', 'string', 'max:1000'],
+            'is_anonymous' => ['boolean'],
         ];
     }
 
@@ -45,6 +51,15 @@ class StoreFundingRequest extends FormRequest
 
             if ($project && Carbon::parse($this->input('funded_at'))->lt($project->start_date)) {
                 $v->errors()->add('funded_at', "La date du financement ne peut pas précéder le début de la collecte ({$project->start_date->format('d/m/Y')}).");
+            }
+
+            // Un don payé en ligne garde le montant, le projet et la source enregistrés par Stripe
+            $funding = $this->route('funding');
+            if ($funding instanceof Funding && $funding->stripe_session_id
+                && ((float) $this->input('amount') !== (float) $funding->amount
+                    || (int) $this->input('project_id') !== $funding->project_id
+                    || $this->input('source_type') !== $funding->source_type->value)) {
+                $v->errors()->add('amount', 'Le montant, le projet et la source d\'un don payé en ligne ne peuvent pas être modifiés.');
             }
         });
     }
@@ -94,5 +109,7 @@ class StoreFundingRequest extends FormRequest
         if (is_string($this->input('amount'))) {
             $this->merge(['amount' => str_replace([',', ' ', "\u{00A0}", "\u{202F}"], ['.', '', '', ''], $this->input('amount'))]);
         }
+
+        $this->merge(['is_anonymous' => $this->boolean('is_anonymous')]);
     }
 }

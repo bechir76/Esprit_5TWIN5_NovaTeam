@@ -2,32 +2,32 @@
 
 namespace App\Livewire;
 
+use App\Exceptions\DonationRefused;
 use App\Http\Requests\StoreContributionRequest;
 use App\Models\Funding;
 use App\Models\Project;
+use App\Services\DonationService;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 use Livewire\Component;
 
 /**
- * Carte « Contribuer » de la fiche publique d'un projet : montants rapides ou montant libre,
- * validation en temps réel et montant collecté / barre de progression mis à jour après la contribution.
- * Mêmes règles que la route POST projects.fundings.store : règles et messages de StoreContributionRequest,
- * Project::contributionRefusal() (projet public, en collecte, non échu), Project::recordContribution()
- * (le passage « en collecte » → « financé » est fait par le hook saved du financement).
+ * Carte « Contribuer » de la fiche publique d'un projet : montants rapides ou montant libre, validation en temps réel,
+ * puis redirection vers Stripe Checkout (DonationService). Sans JavaScript, le formulaire est envoyé à la route POST.
+ * Mêmes règles que la route : StoreContributionRequest, Project::contributionRefusal() et ProjectPolicy::donate.
  */
 class ProjectContribution extends Component
 {
     public Project $project;
 
-    /** Montant rapide choisi (boutons 20 / 50 / 100 TND). */
+    /** Montant rapide choisi (boutons 20 / 50 / 100 DT). */
     public string $amount = '50';
 
     /** « Autre montant » : remplace le montant rapide s'il est rempli. */
     public string $amountOther = '';
 
-    /** Message de remerciement après la dernière contribution. */
-    public ?string $thanks = null;
+    /** Don affiché « Anonyme » sur la page Transparence. */
+    public bool $anonymous = false;
 
     /** @var list<int> */
     public array $presets = [20, 50, 100];
@@ -40,6 +40,7 @@ class ProjectContribution extends Component
         $old = (string) old('amount', '50');
         $this->amount = in_array((int) $old, $this->presets, true) ? $old : '50';
         $this->amountOther = (string) old('amount_other', '');
+        $this->anonymous = (bool) old('anonymous', false);
 
         if (session()->has('errors')) {
             $this->setErrorBag(session('errors')->getBag('default'));
@@ -57,7 +58,7 @@ class ProjectContribution extends Component
         $this->validateAmount();
     }
 
-    public function contribute(): mixed
+    public function contribute(DonationService $donations): mixed
     {
         $user = auth()->user();
 
@@ -70,7 +71,11 @@ class ProjectContribution extends Component
             return $this->redirectRoute('verification.notice');
         }
 
-        $this->thanks = null;
+        if ($user->cannot('donate', $this->project)) {
+            $this->addError('project', 'Les dons en ligne sont réservés aux comptes citoyens.');
+
+            return null;
+        }
 
         if ($refusal = $this->project->contributionRefusal()) {
             $this->addError('project', $refusal);
@@ -80,13 +85,16 @@ class ProjectContribution extends Component
 
         $amount = $this->validateAmount();
 
-        $funding = $this->project->recordContribution($user, $amount);
+        try {
+            $url = $donations->start($this->project, $user, (float) $amount, $this->anonymous);
+        } catch (DonationRefused $e) {
+            $this->addError('project', $e->getMessage());
 
-        $this->thanks = $funding->contributionThanks();
-        $this->amountOther = '';
-        $this->project->refresh();
+            return null;
+        }
 
-        return null;
+        // Page de paiement Stripe (hors du site)
+        return $this->redirect($url);
     }
 
     /** Montant envoyé : « Autre montant » s'il est saisi, sinon le montant rapide. */

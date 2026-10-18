@@ -5,7 +5,9 @@ namespace App\Http\Requests\Admin;
 use App\Enums\ProjectCategory;
 use App\Enums\ProjectStatus;
 use App\Models\Infrastructure;
+use App\Models\Project;
 use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -14,7 +16,11 @@ class StoreProjectRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->isStaff();
+        $project = $this->route('project');
+
+        return $project instanceof Project
+            ? $this->user()->can('update', $project)
+            : $this->user()->can('create', Project::class);
     }
 
     /**
@@ -34,6 +40,38 @@ class StoreProjectRequest extends FormRequest
             'infrastructure_id' => ['nullable', 'integer', Rule::exists(Infrastructure::class, 'id')],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
         ];
+    }
+
+    /**
+     * Cycle de vie : un nouveau projet est « brouillon » ou « en collecte » ; une modification doit suivre
+     * ProjectStatus::transitions(), « financé » exige l'objectif atteint, le retour au brouillon aucun don encaissé.
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $v): void {
+            $to = ProjectStatus::tryFrom((string) $this->input('status'));
+            $project = $this->route('project');
+
+            if (! $to || $v->errors()->has('status')) {
+                return;
+            }
+
+            if (! $project instanceof Project) {
+                if (! in_array($to, [ProjectStatus::Draft, ProjectStatus::Open], true)) {
+                    $v->errors()->add('status', 'Un nouveau projet est créé « Brouillon » ou « En collecte ».');
+                }
+
+                return;
+            }
+
+            if (! $project->status->canTransitionTo($to)) {
+                $v->errors()->add('status', "Passage interdit de « {$project->status->label()} » à « {$to->label()} ».");
+            } elseif ($to === ProjectStatus::Funded && $project->status !== ProjectStatus::Funded && ! $project->hasReachedTarget()) {
+                $v->errors()->add('status', 'Le projet ne peut être « Financé » qu\'une fois l\'objectif atteint par des dons confirmés.');
+            } elseif ($to === ProjectStatus::Draft && $project->status !== ProjectStatus::Draft && $project->fundings()->confirmed()->exists()) {
+                $v->errors()->add('status', 'Un projet qui a déjà reçu des dons ne peut pas revenir au brouillon.');
+            }
+        });
     }
 
     /**
