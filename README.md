@@ -209,56 +209,72 @@ Le tableau de bord (incidents ouverts, incidents critiques ouverts, signalés / 
 
 ## Module Projets et financements
 
-Module 3 « Projets de rénovation et financements » : projets de rénovation des ouvrages et leur financement participatif (municipalités, associations, entreprises, citoyens).
+Module 3 « Projets de rénovation et financements » : projets de rénovation des ouvrages et leur financement participatif « tout ou rien » (municipalités, associations, entreprises, dons citoyens par Stripe), avec cofinancement municipal, reçus vérifiables, transparence et aides IA.
 
-**Entités** (relation 1-n) :
+**Entités** (relation 1-n, aucune autre table métier) :
 
-- `Project` (`projects`) : titre, slug unique généré depuis le titre (suffixe `-2`, `-3`… en cas de doublon), catégorie, description, budget objectif (`target_budget`), dates de début et de fin de collecte, statut (défaut `brouillon`), image (`image_path`), publication (`is_public`), infrastructure liée (nullable, `nullOnDelete`). `hasMany` fundings.
-- `Funding` (`fundings`) : projet (`cascadeOnDelete`), source (`source_type`), financeur (`donor_name`), citoyen contributeur `user_id` (nullable, `nullOnDelete`), montant, date (`funded_at`), référence auto-générée (`FIN-2026-0001`), note.
-- Relations ajoutées : `Infrastructure::projects()`, `User::fundings()`.
-- Enums avec `label()`, `badge()` et `options()` : `ProjectCategory` (decontamination, renovation, surveillance, secheresse), `ProjectStatus` (brouillon, en_collecte, finance, en_travaux, termine), `FundingSource` (municipalite, association, entreprise, citoyen).
-- Accesseurs : `collected_amount` (agrégat `withSum('fundings', 'amount')` s'il est chargé), `progress_percent` (plafonné à 100), `days_left` (0 si la collecte est échue).
-- Scopes : `Project::search`, `ofStatus`, `ofCategory`, `open` (public et en collecte), `published` (public, hors brouillon), `inZone`, `orderByProgress` ; `Funding::search`, `ofSource`, `forProject`, `fundedBetween`.
+- `Project` (`projects`) : titre, slug unique généré depuis le titre, catégorie, description, budget objectif, dates de collecte, statut, image, publication, infrastructure liée (nullable), score de priorité IA (`ai_priority_score`, `ai_priority_reason`, `ai_scored_at`), `milestone_notified_at`. `hasMany` fundings.
+- `Funding` (`fundings`) : projet (`cascadeOnDelete`), source, financeur, citoyen `user_id` (nullable), montant (DT), date, référence `FIN-2026-0001`, note, statut (`pending`, `confirmed`, `refunded`, `failed`), `stripe_session_id`, `stripe_payment_intent_id`, `stripe_refund_id`, `paid_at`, numéro de reçu `REC-2026-000001`, `is_matching`, `is_anonymous`, `matched_funding_id`.
+- Enums : `ProjectStatus` (draft, open, funded, failed, in_progress, completed ; transitions dans `transitions()`), `FundingStatus`, `ProjectCategory`, `FundingSource`, avec `label()`, `badge()`, `options()`.
+- Seuls les financements **confirmés** comptent dans le montant collecté (`Project::withCollected()` = `withSum('fundings', 'amount')` filtré, sans N+1).
+- Migration `2026_10_18_200000_add_lifecycle_payment_and_ai_columns_to_projects_and_fundings` (colonnes ajoutées, anciens statuts français convertis) ; tables techniques `notifications` et `activity_log` (spatie/laravel-activitylog).
 
 **Règles de gestion** :
 
-- Après chaque création, modification ou suppression d'un financement (hooks du modèle `Funding`), `Project::refreshStatus()` fait passer le projet de « En collecte » à « Financé » quand le total atteint le budget objectif, et de « Financé » à « En collecte » s'il repasse en dessous. Les statuts « Brouillon », « En travaux » et « Terminé » ne sont jamais modifiés automatiquement. Un financement déplacé vers un autre projet recalcule les deux projets.
-- Contribution citoyenne : utilisateur connecté, montant de 5 à 10 000 TND, projet public « En collecte » dont la date de fin n'est pas passée. Le contributeur (session), la source (`citoyen`), le nom (nom du compte) et la date (aujourd'hui) sont fixés côté serveur. **Le paiement est simulé** : aucun prestataire de paiement n'est appelé.
-- Seuls les projets publics hors brouillon sont visibles sur le site citoyen ; l'identité des citoyens contributeurs n'y est pas publiée.
+- Cycle de vie : `draft → open → funded → in_progress → completed`, ou `open → failed`. Une transition interdite lève `InvalidProjectTransition` (modèle) ; le formulaire ne propose que les statuts atteignables.
+- Don citoyen (`DonationService`) : citoyen connecté à l'e-mail vérifié, 5 à 10 000 DT, projet public « En collecte » non échu. Dans une transaction avec `lockForUpdate()` sur le projet, le montant est réservé (don `pending`) : deux dons simultanés ne peuvent pas dépasser l'objectif. Puis redirection vers Stripe Checkout (metadata `funding_id`).
+- **Seul le webhook confirme un paiement** (`POST /stripe/webhook`, signature vérifiée, sinon 400) : `checkout.session.completed` → `confirmed` (paid_at, payment intent, numéro de reçu), de façon idempotente ; `checkout.session.expired` → `failed`. Le montant payé est comparé au don enregistré. Les pages de retour n'affichent qu'un message.
+- Événement `FundingConfirmed` : projet `open → funded` si le total confirmé atteint l'objectif ; cofinancement municipal 1 pour 1 en queue (`is_matching`, plafond `config/projects.php`, jamais sur un cofinancement) ; notifications.
+- `projects:close-expired` (chaque nuit) : collectes échues sans objectif → `failed`, dons confirmés remboursés (`Stripe\Refund` ; cofinancements et fonds saisis par le personnel passent à `refunded`). Relançable sans effet de bord.
+- Montants stockés en DT ; Stripe Checkout n'acceptant pas le dinar, ils sont facturés en EUR au taux fixe `TND_TO_EUR_RATE` (0,29 par défaut, `config/projects.php`). Aucune donnée de carte n'est stockée.
+- Autorisations (`ProjectPolicy`, `FundingPolicy`) : administrateur et gestionnaire gèrent projets et financements ; le citoyen donne et voit ses propres dons et reçus.
 
 **Front office** :
 
 | URL | Écran |
 |---|---|
-| `/projets` | Projets publics paginés : filtre catégorie, tri « Plus urgents d'abord », « Presque financés », « Plus récents » (`withSum`, sans N+1) |
-| `/projets/{slug}` | Fiche : montant collecté, progression, jours restants, ouvrage et zone, répartition par source, avancement, derniers financements, formulaire de contribution |
-| `POST /projets/{slug}/contributions` | Contribution (route `projects.fundings.store`, connecté) |
-| `/profil` | « Mes contributions » : projet, référence, date, montant et total |
-| `/` | « Projets en cours de financement » et nombre de projets financés |
+| `/projets` | Projets publics (filtre, tri), « Recommandés pour vous » (citoyen) et assistant de questions |
+| `/projets/{slug}` | Fiche : progression en temps réel (Livewire `wire:poll.5s`), prévision, don par carte, derniers dons |
+| `POST /projects/{slug}/donate` | Don Stripe (route `projects.donate` ; alias `projects.fundings.store`) |
+| `/projets-transparence` | Flux public des dons confirmés (« Anonyme » sur demande) |
+| `/financements/{id}/recu` | Reçu PDF avec QR code (donateur uniquement) |
+| `/recus/{id}/verifier?signature=…` | Vérification publique du reçu (URL signée) |
+| `/notifications`, `/profil` | Centre de notifications ; « Mes contributions » avec statut et reçus |
 
-**Back office** (personnel connecté) :
+**Back office** (administrateur, gestionnaire) :
 
 | URL | Écran |
 |---|---|
-| `/admin/projets` | Liste (`with('infrastructure.zone')`, `withSum('fundings', 'amount')`), recherche, filtres statut / catégorie / zone, pagination |
-| `/admin/projets/creer`, `/admin/projets/{id}/modifier` | Formulaire partagé (infrastructure « CODE · Nom », image à ajouter / remplacer / retirer) |
-| `/admin/projets/{id}` | Fiche : détails, progression, montants par source, financements, « Ajouter un financement » |
-| `/admin/financements` | KPIs (total collecté, contributions, part municipale, projets financés à 100 %), liste (`with(['project', 'user'])`) filtrée par projet / source / période, progression par projet |
-| `/admin/financements/creer` | Saisie depuis la liste ou depuis la fiche d'un projet (`?projet=ID`, retour sur la fiche) |
-| `/admin/financements/{id}`, `/admin/financements/{id}/modifier` | Fiche et modification |
+| `/admin/projets` | Liste Livewire : recherche, filtres catégorie / statut / zone / % financé / date limite, tri (échéance, score, avancement), badge de priorité, « Recalculer les priorités » |
+| `/admin/projets/creer`, `/{id}/modifier` | Formulaire avec « Générer avec l'IA » (description insérée, jamais enregistrée automatiquement) |
+| `/admin/projets/{id}` | Fiche : graphique Chart.js cumul / rythme idéal et prévision, facteurs de priorité, financements, journal d'audit |
+| `/admin/financements` | KPI (dons confirmés), filtres projet / source / statut / période, export CSV |
+| `/admin/financements/tableau-de-bord` | Total par source, évolution mensuelle, top donateurs, presque financés (> 80 %), projets en retard |
 
-Le tableau de bord (KPI « Fonds collectés » avec cumul sur 8 mois, bloc « Avancement des projets ») utilise les données réelles. Les composants Blade `<x-project-card>` (site citoyen) et `<x-project-progress>` (console) affichent les projets.
+**IA** (`app/Services/Ai`, `config/ai.php`) : le LLM (API Anthropic, SDK `anthropic-ai/sdk`) rédige seulement ; les calculs restent dans le code. Sans `ANTHROPIC_API_KEY`, chaque fonction utilise un repli (texte gabarit ou règles). Réponses JSON validées, aucune donnée personnelle envoyée, routes limitées (`AI_RATE_LIMIT` par minute).
 
-**Validation** (messages en français) :
+- Priorisation : score 0-100 déterministe (`ProjectScoring`, poids dans `config/projects.php`) à partir des incidents récents, de leur gravité, de l'état de l'ouvrage, de la population et du budget ; explication rédigée par l'IA. Commande `projects:score` (chaque nuit, `--sync` pour un calcul immédiat).
+- Description d'un projet générée depuis le titre, la catégorie, le budget et l'infrastructure.
+- Prévision (`FundingForecast`) : rythme des dons confirmés sur 14 jours, date estimée, probabilité haute / moyenne / faible ; message éventuellement reformulé par l'IA.
+- Recommandations au citoyen (projets réparant un ouvrage qu'il a signalé, puis sa zone, puis les plus prioritaires).
+- Assistant : le LLM n'appelle que des outils en lecture seule (`getProjectStats`, `listAlmostFunded`, `listOpenProjects`) ; questions hors module refusées.
 
-- Projet : titre 5–150 caractères, catégorie et statut parmi les enums, description 20 caractères minimum, budget > 0, date de fin postérieure à la date de début, infrastructure existante, image JPG ou PNG de 2 Mo maximum.
-- Financement : projet existant, source valide, financeur obligatoire, montant > 0, date entre le début de la collecte du projet et aujourd'hui.
+**Variables `.env`** (vides dans `.env.example`) : `STRIPE_KEY`, `STRIPE_SECRET`, `STRIPE_WEBHOOK_SECRET` (clés de test), `PAYMENT_CURRENCY`, `TND_TO_EUR_RATE`, `ANTHROPIC_API_KEY`, `AI_MODEL`, `AI_TIMEOUT`.
 
-**Images** : enregistrées sur le disque `public`, dans `storage/app/public/projects` (`php artisan storage:link`). L'image est supprimée quand elle est remplacée, retirée ou quand le projet est supprimé ; les financements du projet sont supprimés par la cascade.
+**Tester en local** :
 
-**Données de test** : `ProjectSeeder` crée 12 projets rattachés aux ouvrages du template (« Réhabilitation du réservoir de La Soukra », « Traitement du nitrate au forage de Mornag »…) avec des statuts variés et des dates relatives à aujourd'hui. `FundingSeeder` crée 5 à 25 financements par projet dont le total respecte le statut (brouillon très loin de l'objectif, en collecte entre 25 et 90 %, financé / en travaux / terminé à 100 % ou plus), répartis entre la municipalité de la zone, des associations, des entreprises et les citoyens existants (2 contributions pour `citoyen@aquasecure.tn`). `ProjectFactory` (états `draft()`, `collecting()`, `funded()`, `expired()`, `hidden()`, `withoutInfrastructure()`) et `FundingFactory` (`municipal()`, `association()`, `company()`, `fromCitizen()`).
+```bash
+php artisan migrate:fresh --seed
+php artisan queue:work
+php artisan schedule:work
+stripe listen --forward-to localhost:8000/stripe/webhook
+```
 
-**Tests** : `tests/Feature/ProjectTest.php` (18 tests) et `tests/Feature/FundingTest.php` (20 tests).
+`stripe listen` affiche le secret `whsec_…` à mettre dans `STRIPE_WEBHOOK_SECRET`. Carte de test : 4242 4242 4242 4242, date future, CVC quelconque.
+
+**Données de test** : `ProjectSeeder` et `FundingSeeder` n'appellent que les factories : collectes ouvertes, 2 presque financées (85 %), financées, en travaux, terminée, brouillons, 1 échouée avec dons remboursés ; dons citoyens confirmés (dont anonymes), cofinancements, dons en attente ; 2 dons avec reçu pour `citoyen@aquasecure.tn`. États : `ProjectFactory` (`draft()`, `open()`, `funded()`, `almostFunded()`, `failed()`, `inProgress()`, `completed()`, `expired()`, `hidden()`), `FundingFactory` (`confirmed()`, `pending()`, `refunded()`, `failed()`, `matching()`, `anonymous()`, `fromCitizen()`, `municipal()`…).
+
+**Tests** (Stripe et LLM simulés, aucun appel réseau) : `ProjectTest` (24), `FundingTest` (17), `DonationTest` (18), `ProjectAiTest` (13), `Livewire/ProjectContributionTest` (8).
 
 ## Développement
 
