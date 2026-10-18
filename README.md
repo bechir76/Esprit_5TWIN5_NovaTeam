@@ -267,10 +267,10 @@ Module 3 « Projets de rénovation et financements » : projets de rénovation d
 php artisan migrate:fresh --seed
 php artisan queue:work
 php artisan schedule:work
-stripe listen --forward-to localhost:8000/stripe/webhook
+stripe listen --events checkout.session.completed,checkout.session.expired,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed --forward-to localhost:8000/stripe/webhook
 ```
 
-`stripe listen` affiche le secret `whsec_…` à mettre dans `STRIPE_WEBHOOK_SECRET`. Carte de test : 4242 4242 4242 4242, date future, CVC quelconque.
+`stripe listen` (CLI Stripe à installer : `winget install Stripe.StripeCli`, puis `stripe login`) affiche le secret `whsec_…` à mettre dans `STRIPE_WEBHOOK_SECRET` (puis `php artisan config:clear`). Les versions récentes de la CLI exigent `--events`. Carte de test : 4242 4242 4242 4242, date future, CVC quelconque.
 
 **Données de test** : `ProjectSeeder` et `FundingSeeder` n'appellent que les factories : collectes ouvertes, 2 presque financées (85 %), financées, en travaux, terminée, brouillons, 1 échouée avec dons remboursés ; dons citoyens confirmés (dont anonymes), cofinancements, dons en attente ; 2 dons avec reçu pour `citoyen@aquasecure.tn`. États : `ProjectFactory` (`draft()`, `open()`, `funded()`, `almostFunded()`, `failed()`, `inProgress()`, `completed()`, `expired()`, `hidden()`), `FundingFactory` (`confirmed()`, `pending()`, `refunded()`, `failed()`, `matching()`, `anonymous()`, `fromCitizen()`, `municipal()`…).
 
