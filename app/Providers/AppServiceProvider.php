@@ -6,6 +6,9 @@ use App\Http\Middleware\EnsureUserIsStaff;
 use App\Models\User;
 use App\Services\Ai\AnthropicIncidentVisionClient;
 use App\Services\Ai\AnthropicLlmClient;
+use App\Services\Ai\GeminiApi;
+use App\Services\Ai\GeminiIncidentVisionClient;
+use App\Services\Ai\GeminiLlmClient;
 use App\Services\Ai\IncidentVisionClient;
 use App\Services\Ai\NullIncidentVisionClient;
 use App\Services\Ai\LlmClient;
@@ -26,15 +29,25 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // Module projets : client IA (Claude si une clé est configurée, sinon repli sans appel réseau)
-        $this->app->bind(LlmClient::class, fn () => filled(config('ai.api_key'))
-            ? new AnthropicLlmClient(config('ai.api_key'), config('ai.model'), config('ai.timeout'))
-            : new NullLlmClient);
+        // Client IA partagé (AI_PROVIDER) : Gemini ou Claude si la clé correspondante est configurée,
+        // sinon repli sans appel réseau
+        $gemini = fn () => new GeminiApi(config('ai.gemini.api_key'), config('ai.gemini.model'), config('ai.gemini.fallback_model'), config('ai.timeout'));
+        $useGemini = fn () => config('ai.provider') === 'gemini' && filled(config('ai.gemini.api_key'));
+        $useClaude = fn () => config('ai.provider') === 'anthropic' && filled(config('ai.api_key'));
 
-        // Module incidents : analyse de la photo des signalements (Claude si une clé est configurée et la vision activée)
-        $this->app->bind(IncidentVisionClient::class, fn () => filled(config('ai.api_key')) && config('ai.incidents.vision')
-            ? new AnthropicIncidentVisionClient(config('ai.api_key'), config('ai.model'), config('ai.timeout'))
-            : new NullIncidentVisionClient);
+        $this->app->bind(LlmClient::class, fn () => match (true) {
+            $useGemini() => new GeminiLlmClient($gemini()),
+            $useClaude() => new AnthropicLlmClient(config('ai.api_key'), config('ai.model'), config('ai.timeout')),
+            default => new NullLlmClient,
+        });
+
+        // Module incidents : analyse de la photo des signalements (si la vision est activée)
+        $this->app->bind(IncidentVisionClient::class, fn () => match (true) {
+            ! config('ai.incidents.vision') => new NullIncidentVisionClient,
+            $useGemini() => new GeminiIncidentVisionClient($gemini()),
+            $useClaude() => new AnthropicIncidentVisionClient(config('ai.api_key'), config('ai.model'), config('ai.timeout')),
+            default => new NullIncidentVisionClient,
+        });
     }
 
     /**
