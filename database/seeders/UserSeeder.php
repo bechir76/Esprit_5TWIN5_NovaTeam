@@ -7,38 +7,15 @@ use Illuminate\Database\Seeder;
 
 class UserSeeder extends Seeder
 {
-    /**
-     * Un compte fixe par rôle (mot de passe « password »), 20 citoyens et 2 comptes suspendus.
-     */
+    /** Un compte de connexion par rôle (mot de passe « password »), puis des comptes générés. */
     public function run(): void
     {
-        User::factory()->admin()->create([
-            'name' => 'Karim Trabelsi',
-            'email' => 'admin@aquasecure.tn',
-            'organization' => 'Régie des eaux d\'Ariana',
-        ]);
+        User::factory()->admin()->create(['email' => 'admin@aquasecure.tn']);
+        User::factory()->gestionnaire()->create(['email' => 'gestionnaire@aquasecure.tn']);
+        User::factory()->technicien()->create(['email' => 'technicien@aquasecure.tn']);
+        User::factory()->citoyen()->create(['email' => 'citoyen@aquasecure.tn']);
 
-        User::factory()->gestionnaire()->create([
-            'name' => 'Amira Haddad',
-            'email' => 'gestionnaire@aquasecure.tn',
-            'organization' => 'Régie des eaux d\'Ariana',
-        ]);
-
-        User::factory()->technicien()->create([
-            'name' => 'Nour Jlassi',
-            'email' => 'technicien@aquasecure.tn',
-            'organization' => 'Régie des eaux d\'Ariana',
-        ]);
-
-        User::factory()->citoyen()->create([
-            'name' => 'Sana Ben Ali',
-            'email' => 'citoyen@aquasecure.tn',
-            'address' => '12 rue Ibn Sina, Ariana',
-        ]);
-
-        User::factory(20)->citoyen()->create();
-
-        User::factory()->citoyen()->suspended()->create();
-        User::factory()->technicien()->suspended()->create();
+        User::factory()->count(4)->technicien()->create();
+        User::factory()->count(20)->citoyen()->create();
     }
 }

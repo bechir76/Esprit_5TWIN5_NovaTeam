@@ -8,6 +8,8 @@ use App\Models\WaterAnalysis;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
+ * L'unité et la conformité sont calculées par le modèle à partir du paramètre.
+ *
  * @extends Factory<Measurement>
  */
 class MeasurementFactory extends Factory
@@ -17,46 +19,31 @@ class MeasurementFactory extends Factory
      */
     public function definition(): array
     {
-        $param = fake()->randomElement(WaterParameter::cases());
-
         return [
             'water_analysis_id' => WaterAnalysis::factory(),
-            'parameter'         => $param,
-            'value'             => $this->valueFor($param, compliant: true),
-            // unit et is_compliant sont calculés automatiquement par le hook saving()
+            'parameter' => fake()->randomElement(WaterParameter::cases()),
+            // Valeur entre les seuils du paramètre (9 fois sur 10), sinon au-dessus du seuil maximal
+            'value' => fn (array $attributes) => fake()->boolean(90)
+                ? fake()->randomFloat(2, $attributes['parameter']->min() ?? 0, $attributes['parameter']->max())
+                : $attributes['parameter']->max() + fake()->randomFloat(2, 0.5, 5),
         ];
     }
 
-    // ---------------------------------------------------------------- Helpers
-
-    /** Valeur dans les seuils (conforme) ou hors seuils (non conforme). */
-    protected function valueFor(WaterParameter $param, bool $compliant): float
+    /** Valeur dans les seuils réglementaires. */
+    public function conforme(): static
     {
-        $faker = fake('fr_FR');
-
-        return match ($param) {
-            WaterParameter::Chlore       => $compliant ? $faker->randomFloat(2, 0.1, 0.5)  : $faker->randomFloat(2, 0.0, 0.09),
-            WaterParameter::Ph           => $compliant ? $faker->randomFloat(1, 6.5, 8.5)  : $faker->randomFloat(1, 9.0, 10.0),
-            WaterParameter::Turbidite    => $compliant ? $faker->randomFloat(2, 0.1, 1.0)  : $faker->randomFloat(1, 1.5, 5.0),
-            WaterParameter::Nitrate      => $compliant ? $faker->randomFloat(1, 5.0, 49.9) : $faker->randomFloat(1, 51.0, 80.0),
-            WaterParameter::Conductivite => $compliant ? $faker->numberBetween(200, 2500)   : $faker->numberBetween(2600, 3500),
-            WaterParameter::Ecoli        => $compliant ? 0.0                                : $faker->numberBetween(1, 20),
-        };
+        return $this->state(['value' => fn (array $attributes) => fake()->randomFloat(2, $attributes['parameter']->min() ?? 0, $attributes['parameter']->max())]);
     }
 
-    public function compliant(WaterParameter $param): static
+    /** Valeur au-dessus du seuil maximal. */
+    public function nonConforme(): static
     {
-        return $this->state(fn () => [
-            'parameter' => $param,
-            'value'     => $this->valueFor($param, compliant: true),
-        ]);
+        return $this->state(['value' => fn (array $attributes) => $attributes['parameter']->max() + fake()->randomFloat(2, 0.5, 5)]);
     }
 
-    public function nonCompliant(WaterParameter $param): static
+    /** Une mesure par paramètre (6 mesures) : un paramètre n'apparaît qu'une fois par analyse. */
+    public function eachParameter(): static
     {
-        return $this->state(fn () => [
-            'parameter' => $param,
-            'value'     => $this->valueFor($param, compliant: false),
-        ]);
+        return $this->forEachSequence(...array_map(fn (WaterParameter $parameter) => ['parameter' => $parameter], WaterParameter::cases()));
     }
 }

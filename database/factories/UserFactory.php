@@ -13,84 +13,57 @@ use Illuminate\Support\Str;
  */
 class UserFactory extends Factory
 {
-    /**
-     * The current password being used by the factory.
-     */
+    /** Mot de passe commun à tous les comptes générés : « password ». */
     protected static ?string $password;
 
-    /** Communes du Grand Tunis utilisées pour les adresses. */
-    protected const COMMUNES = ['Ariana', 'Tunis', 'Ben Arous', 'La Manouba', 'La Soukra', 'Raoued', 'Mégrine'];
-
     /**
-     * Define the model's default state: un citoyen actif.
+     * Par défaut : un citoyen actif.
      *
      * @return array<string, mixed>
      */
     public function definition(): array
     {
-        $faker = fake('fr_FR');
-
         return [
-            'name' => $faker->firstName().' '.$faker->lastName(),
-            'email' => $faker->unique()->safeEmail(),
+            'name' => fake()->name(),
+            'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
             'role' => Role::Citoyen,
-            'phone' => $faker->numerify($faker->randomElement(['2# ### ###', '5# ### ###', '9# ### ###'])),
+            'phone' => fake()->numerify('## ### ###'),
             'organization' => null,
-            'address' => $faker->streetAddress().', '.$faker->randomElement(self::COMMUNES),
+            'address' => fake()->address(),
             'is_active' => true,
         ];
     }
 
-    /**
-     * Indicate that the model's email address should be unverified.
-     */
     public function unverified(): static
     {
-        return $this->state(fn (array $attributes) => [
-            'email_verified_at' => null,
-        ]);
+        return $this->state(['email_verified_at' => null]);
     }
 
     public function admin(): static
     {
-        return $this->staff(Role::Admin);
+        return $this->state(['role' => Role::Admin, 'organization' => fake()->randomElement(User::ORGANIZATIONS)]);
     }
 
     public function gestionnaire(): static
     {
-        return $this->staff(Role::Gestionnaire);
+        return $this->state(['role' => Role::Gestionnaire, 'organization' => fake()->randomElement(User::ORGANIZATIONS)]);
     }
 
     public function technicien(): static
     {
-        return $this->staff(Role::Technicien);
+        return $this->state(['role' => Role::Technicien, 'organization' => fake()->randomElement(User::ORGANIZATIONS)]);
     }
 
     public function citoyen(): static
     {
-        return $this->state(fn (array $attributes) => [
-            'role' => Role::Citoyen,
-            'organization' => null,
-        ]);
+        return $this->state(['role' => Role::Citoyen, 'organization' => null]);
     }
 
     public function suspended(): static
     {
-        return $this->state(fn (array $attributes) => [
-            'is_active' => false,
-        ]);
-    }
-
-    /** Personnel : rôle, organisation et numéro fixe professionnel. */
-    protected function staff(Role $role): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'role' => $role,
-            'organization' => fake('fr_FR')->randomElement(User::ORGANIZATIONS),
-            'phone' => fake('fr_FR')->numerify('71 ### ###'),
-        ]);
+        return $this->state(['is_active' => false]);
     }
 }
