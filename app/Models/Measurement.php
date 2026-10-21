@@ -55,9 +55,13 @@ class Measurement extends Model
             $measurement->is_compliant = $param->isCompliant((float) $measurement->value);
         });
 
-        // Après toute modification : recalculer le statut de l'analyse parente
+        // Après toute modification : recalculer le statut de l'analyse parente,
+        // détecter les anomalies statistiques (B1) et vérifier les alertes de seuil (A2)
         static::saved(function (self $measurement): void {
             $measurement->waterAnalysis->recalculateStatus();
+
+            // Détection d'anomalie et alertes en différé pour ne pas bloquer l'enregistrement
+            dispatch(new \App\Jobs\AnalyzeWaterMeasurement($measurement))->afterCommit();
         });
 
         static::deleted(function (self $measurement): void {

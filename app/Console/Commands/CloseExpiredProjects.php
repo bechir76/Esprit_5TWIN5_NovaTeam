@@ -7,7 +7,7 @@ use Illuminate\Console\Command;
 
 /**
  * Chaque nuit (routes/console.php) : les projets en collecte échus sans objectif atteint passent à « échoué »
- * et leurs dons confirmés sont remboursés. Idempotente : relancée, elle ne rembourse que ce qui reste à rembourser.
+ * et leurs dons confirmés sont remboursés.
  */
 class CloseExpiredProjects extends Command
 {

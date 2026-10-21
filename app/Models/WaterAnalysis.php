@@ -39,8 +39,13 @@ class WaterAnalysis extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'sampled_at' => 'datetime',
-        'status' => AnalysisStatus::class,
+        'sampled_at'          => 'datetime',
+        'status'              => AnalysisStatus::class,
+        'has_alert'           => 'boolean',
+        'alert_parameters'    => 'array',
+        'alert_dispatched_at' => 'datetime',
+        'ai_degradation_at'   => 'datetime',
+        'ai_sampling_frequency_days' => 'integer',
     ];
 
     // ---------------------------------------------------------------- Hooks

@@ -19,3 +19,6 @@ Schedule::command('incidents:cluster')->everyThirtyMinutes()->withoutOverlapping
 // Module infrastructures : score de risque chaque nuit (après les incidents liés), inspections en retard chaque matin
 Schedule::command('infrastructures:score')->dailyAt('03:00')->withoutOverlapping();
 Schedule::command('infrastructures:check-inspections')->dailyAt('07:00')->withoutOverlapping();
+
+// Module qualité de l'eau : WQRI recalculé chaque nuit (après les scores d'infrastructure)
+Schedule::command('zones:score-wqri')->dailyAt('04:00')->withoutOverlapping();

@@ -41,6 +41,9 @@ class Zone extends Model
         'population_served' => 'integer',
         'maintenance_plan' => 'array',
         'maintenance_plan_at' => 'datetime',
+        'wqri_score' => 'integer',
+        'wqri_factors' => 'array',
+        'wqri_computed_at' => 'datetime',
     ];
 
     /** @return HasMany<Infrastructure, $this> */

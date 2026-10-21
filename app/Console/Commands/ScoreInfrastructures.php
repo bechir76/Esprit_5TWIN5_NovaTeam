@@ -8,7 +8,7 @@ use Illuminate\Console\Command;
 
 /**
  * Chaque nuit (routes/console.php) et à la demande : score de risque prédictif d'un ouvrage (code ou id)
- * ou de tous les ouvrages. Le score est calculé par le code ; l'IA rédige l'explication (repli : règles).
+ * ou de tous les ouvrages.
  */
 class ScoreInfrastructures extends Command
 {

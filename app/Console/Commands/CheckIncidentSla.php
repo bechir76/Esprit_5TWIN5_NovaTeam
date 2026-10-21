@@ -31,7 +31,6 @@ class CheckIncidentSla extends Command
                 ->get();
 
             foreach ($incidents as $incident) {
-                // Mise à jour conditionnelle : un passage concurrent ne notifie pas deux fois
                 $marked = Incident::query()->whereKey($incident->id)->whereNull('sla_breached_at')->update(['sla_breached_at' => now()]);
 
                 if ($marked === 1) {
