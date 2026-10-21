@@ -280,6 +280,11 @@ class InfrastructureAdvancedTest extends TestCase
         $this->assertStringContainsString("{$reservoir->code};\"Réservoir Ennasr\";Réservoir;", $lines[1]);
         $this->assertStringContainsString(";Critique;01/01/2026;01/04/2026;oui;{$reservoir->risk_score};{$reservoir->risk_level->label()}", $lines[1]);
         $this->assertStringNotContainsString('Conduite Mégrine', $csv);
+
+        // Injection de formule : le nom est exporté comme texte
+        $reservoir->update(['name' => '=HYPERLINK("http://exemple.test")']);
+        $csv = $this->actingAs($manager)->get(route('admin.infrastructures.export', ['type' => 'reservoir']))->streamedContent();
+        $this->assertStringContainsString(';"\'=HYPERLINK(""http://exemple.test"")";', $csv);
     }
 
     public function test_pdf_sheet_contains_risk_recommendations_inspections_and_incidents(): void
