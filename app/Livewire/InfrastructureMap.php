@@ -11,9 +11,10 @@ use Livewire\Component;
 
 /**
  * Carte Leaflet du réseau (site citoyen /carte et liste admin) : repères colorés selon l'état, regroupés
- * (markercluster), popup (nom, type, zone, risque, prochaine inspection) et filtres type / état / zone / risque
- * sans rechargement. Les repères initiaux sont écrits avec Js::from, puis renvoyés par l'événement
- * « infrastructure-map-updated » à chaque changement de filtre. $public (verrouillé) : ouvrages publics seulement.
+ * (markercluster) et filtres sans rechargement. Les repères initiaux sont écrits avec Js::from, puis renvoyés par
+ * l'événement « infrastructure-map-updated » à chaque changement de filtre.
+ * $public (verrouillé) : ouvrages publics seulement, version réduite (nom, type, zone, état ; filtres type / état / zone).
+ * Console : en plus code, risque, prochaine inspection et retard dans la popup, et filtre par niveau de risque.
  */
 class InfrastructureMap extends Component
 {
@@ -67,26 +68,29 @@ class InfrastructureMap extends Component
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->when($this->public, fn ($q) => $q->public())
-            ->filter(Infrastructure::normalizeFilters($this->only(['type', 'status', 'zone', 'risk'])))
+            // Le filtre de risque n'existe que dans la console
+            ->filter(Infrastructure::normalizeFilters($this->only(['type', 'status', 'zone']) + ['risk' => $this->public ? '' : $this->risk]))
             ->orderBy('name')
             ->get()
             ->map(fn (Infrastructure $i) => [
                 'name' => $i->name,
-                'code' => $i->code,
                 'type' => $i->type->label(),
                 'zone' => $i->zone->name,
                 'status' => $i->status->value,
                 'statusLabel' => $i->status->label(),
                 'color' => $i->status->hex(),
+                'lat' => $i->latitude,
+                'lng' => $i->longitude,
+                'url' => $this->public ? route('incidents.create') : route('admin.infrastructures.show', $i),
+            ] + ($this->public ? [] : [
+                // Console seulement : ces informations désignent les ouvrages les plus fragiles du réseau
+                'code' => $i->code,
                 'riskScore' => $i->risk_score,
                 'riskLabel' => $i->risk_level?->label(),
                 'riskColor' => $i->risk_level?->hex(),
                 'nextInspection' => $i->next_inspection_at?->format('d/m/Y'),
                 'overdue' => $i->isInspectionOverdue(),
-                'lat' => $i->latitude,
-                'lng' => $i->longitude,
-                'url' => $this->public ? route('incidents.create') : route('admin.infrastructures.show', $i),
-            ])
+            ]))
             ->values()
             ->all();
     }
@@ -112,7 +116,7 @@ class InfrastructureMap extends Component
         return view('livewire.infrastructure-map', [
             'markers' => $markers,
             'zones' => Zone::options(),
-            'filtered' => $this->type.$this->status.$this->zone.$this->risk !== '',
+            'filtered' => $this->type.$this->status.$this->zone.($this->public ? '' : $this->risk) !== '',
         ]);
     }
 }

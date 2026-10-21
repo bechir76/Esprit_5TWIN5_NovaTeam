@@ -36,7 +36,7 @@ class InfrastructureMapTest extends TestCase
         // Autre zone au nom fixe : la factory pourrait sinon générer « La Soukra » (nom de zone unique)
         $other = Zone::factory()->create(['name' => 'Zone témoin']);
         Infrastructure::factory()->for($other)->forage()->good()->create(['name' => 'Forage de Mornag F3', 'last_inspection_at' => now()->subMonth()]);
-        Infrastructure::factory()->for($this->zone)->hidden()->create(['name' => 'Ouvrage confidentiel']);
+        Infrastructure::factory()->for($this->zone)->hidden()->conduite()->good()->create(['name' => 'Ouvrage confidentiel']);
         Infrastructure::factory()->for($other)->withoutCoordinates()->create(['name' => 'Ouvrage sans coordonnées']);
     }
 
@@ -46,19 +46,31 @@ class InfrastructureMapTest extends TestCase
         return collect($markers)->pluck('name')->sort()->values()->all();
     }
 
-    public function test_public_map_shows_only_public_geolocated_infrastructures_with_popup_data(): void
+    public function test_public_map_shows_only_public_geolocated_infrastructures_without_risk_data(): void
     {
-        $markers = Livewire::test(InfrastructureMap::class, ['public' => true])->instance()->markers();
+        $component = Livewire::test(InfrastructureMap::class, ['public' => true]);
+        $markers = $component->instance()->markers();
 
         $this->assertSame(['Forage de Mornag F3', 'Réservoir de La Soukra'], self::names($markers));
 
+        // Version réduite : nom, type, zone et état seulement (ni code, ni risque, ni inspection)
         $reservoir = collect($markers)->firstWhere('name', 'Réservoir de La Soukra');
+        $this->assertSame(['name', 'type', 'zone', 'status', 'statusLabel', 'color', 'lat', 'lng', 'url'], array_keys($reservoir));
         $this->assertSame('Réservoir', $reservoir['type']);
         $this->assertSame('La Soukra', $reservoir['zone']);
         $this->assertSame('#E63946', $reservoir['color']);
-        $this->assertSame(Infrastructure::firstWhere('name', 'Réservoir de La Soukra')->risk_level->label(), $reservoir['riskLabel']);
-        $this->assertSame(now()->format('d/m/Y'), $reservoir['nextInspection']);
         $this->assertSame(route('incidents.create'), $reservoir['url']);
+
+        $component->assertDontSee('Tous les risques')->assertDontSee('riskScore')->assertDontSee('nextInspection');
+    }
+
+    public function test_public_map_ignores_the_risk_filter(): void
+    {
+        $level = Infrastructure::firstWhere('name', 'Réservoir de La Soukra')->risk_level->value;
+
+        Livewire::test(InfrastructureMap::class, ['public' => true])
+            ->set('risk', $level)
+            ->assertDispatched('infrastructure-map-updated', fn (string $event, array $params) => self::names($params['markers']) === ['Forage de Mornag F3', 'Réservoir de La Soukra']);
     }
 
     public function test_filters_send_new_markers_without_reloading(): void
@@ -66,7 +78,7 @@ class InfrastructureMapTest extends TestCase
         $level = Infrastructure::firstWhere('name', 'Réservoir de La Soukra')->risk_level->value;
         $sent = fn (array $expected) => fn (string $event, array $params) => self::names($params['markers']) === $expected;
 
-        Livewire::test(InfrastructureMap::class, ['public' => true])
+        Livewire::actingAs(User::factory()->technicien()->create())->test(InfrastructureMap::class)
             ->set('type', 'forage')
             ->assertDispatched('infrastructure-map-updated', $sent(['Forage de Mornag F3']))
             ->assertSee('1</span> ouvrage(s) affiché(s)', false)
@@ -75,12 +87,12 @@ class InfrastructureMapTest extends TestCase
             ->assertDispatched('infrastructure-map-updated', $sent(['Réservoir de La Soukra']))
             ->set('status', '')
             ->set('zone', (string) $this->zone->id)
-            ->assertDispatched('infrastructure-map-updated', $sent(['Réservoir de La Soukra']))
+            ->assertDispatched('infrastructure-map-updated', $sent(['Ouvrage confidentiel', 'Réservoir de La Soukra']))
             ->set('zone', '')
             ->set('risk', $level)
             ->assertDispatched('infrastructure-map-updated', $sent(['Réservoir de La Soukra']))
             ->call('resetFilters')
-            ->assertDispatched('infrastructure-map-updated', $sent(['Forage de Mornag F3', 'Réservoir de La Soukra']));
+            ->assertDispatched('infrastructure-map-updated', $sent(['Forage de Mornag F3', 'Ouvrage confidentiel', 'Réservoir de La Soukra']));
     }
 
     public function test_public_mode_cannot_be_switched_off_by_the_browser(): void
@@ -97,6 +109,12 @@ class InfrastructureMapTest extends TestCase
         $markers = Livewire::actingAs($staff)->test(InfrastructureMap::class)->instance()->markers();
         $this->assertSame(['Forage de Mornag F3', 'Ouvrage confidentiel', 'Réservoir de La Soukra'], self::names($markers));
         $this->assertStringStartsWith(url('/admin/infrastructures/'), $markers[0]['url']);
+
+        // Console : popup complète (code, risque, prochaine inspection, retard)
+        $reservoir = collect($markers)->firstWhere('name', 'Réservoir de La Soukra');
+        $this->assertSame(Infrastructure::firstWhere('name', 'Réservoir de La Soukra')->risk_level->label(), $reservoir['riskLabel']);
+        $this->assertSame(now()->format('d/m/Y'), $reservoir['nextInspection']);
+        $this->assertArrayHasKey('code', $reservoir);
 
         Livewire::actingAs(User::factory()->citoyen()->create())->test(InfrastructureMap::class)->assertForbidden();
     }

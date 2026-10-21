@@ -21,12 +21,14 @@
       <option value="{{ $id }}">{{ $name }}</option>
       @endforeach
     </select>
+    @unless ($public)
     <select class="input" wire:model.live="risk" aria-label="Niveau de risque">
       <option value="">Tous les risques</option>
       @foreach (\App\Enums\RiskLevel::cases() as $case)
       <option value="{{ $case->value }}">Risque {{ mb_strtolower($case->label()) }}</option>
       @endforeach
     </select>
+    @endunless
     @if ($filtered)
     <button class="btn btn-ghost" type="button" wire:click="resetFilters">Réinitialiser</button>
     @endif
@@ -55,11 +57,13 @@
     map.addLayer(cluster);
 
     const escape = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-    const popup = (m) => `<strong>${escape(m.name)}</strong><br><span style="font-family:monospace">${escape(m.code)}</span>`
+    // Site citoyen : nom, type, zone et état ; console : en plus code, risque et prochaine inspection
+    const popup = (m) => `<strong>${escape(m.name)}</strong>`
+      + (isPublic ? '' : `<br><span style="font-family:monospace">${escape(m.code)}</span>`)
       + `<br>${escape(m.type)} · ${escape(m.zone)}`
       + `<br>État : <span style="color:${escape(m.color)};font-weight:600">${escape(m.statusLabel)}</span>`
-      + `<br>Risque : ${m.riskScore === null ? 'non évalué' : `<span style="color:${escape(m.riskColor)};font-weight:600">${escape(m.riskLabel)}</span> (${escape(m.riskScore)}/100)`}`
-      + `<br>Prochaine inspection : ${escape(m.nextInspection ?? '—')}${m.overdue ? ' <strong style="color:#E63946">(en retard)</strong>' : ''}`
+      + (isPublic ? '' : `<br>Risque : ${m.riskScore === null ? 'non évalué' : `<span style="color:${escape(m.riskColor)};font-weight:600">${escape(m.riskLabel)}</span> (${escape(m.riskScore)}/100)`}`
+        + `<br>Prochaine inspection : ${escape(m.nextInspection ?? '—')}${m.overdue ? ' <strong style="color:#E63946">(en retard)</strong>' : ''}`)
       + `<br><a href="${escape(m.url)}">${isPublic ? 'Signaler un problème' : 'Voir la fiche'}</a>`;
 
     const draw = (markers) => {

@@ -153,7 +153,10 @@ php artisan infrastructures:check-inspections  # inspections en retard (chaque j
 
 ### Carte, statistiques, import et IA (suite)
 
-**Carte Leaflet** (composant Livewire `InfrastructureMap`, comme la carte des incidents) : sur `/carte` (ouvrages publics et géolocalisés seulement, mode public verrouillé) et sous la liste admin (chargée en différé, ouvrages masqués compris). Repères colorés selon l'état, regroupés (markercluster), popup avec nom, type, zone, risque et prochaine inspection ; filtres type, état, zone et niveau de risque sans rechargement (les repères sont renvoyés par l'événement `infrastructure-map-updated`). Repères initiaux écrits avec `Js::from`, valeurs échappées dans les popups, scripts CDN avec empreinte SRI.
+**Carte Leaflet** (composant Livewire `InfrastructureMap`, comme la carte des incidents) : repères colorés selon l'état, regroupés (markercluster), filtres sans rechargement (les repères sont renvoyés par l'événement `infrastructure-map-updated`).
+
+- `/carte` (site citoyen, mode public verrouillé) : ouvrages publics et géolocalisés seulement, version réduite : popup avec nom, type, zone et état, filtres type, état et zone. Le risque, le code et les dates d'inspection ne sont pas publiés, pour ne pas désigner les ouvrages les plus fragiles du réseau.
+- Liste admin (chargée en différé, ouvrages masqués compris) : popup complète (code, risque, prochaine inspection, retard) et filtre supplémentaire par niveau de risque. Repères initiaux écrits avec `Js::from`, valeurs échappées dans les popups, scripts CDN avec empreinte SRI.
 
 **Statistiques réseau** (`/admin/infrastructures/statistiques`, Chart.js) : ouvrages par état et par type, âge moyen, risque moyen et inspections en retard par zone. `InfrastructureStatsService` met le calcul en cache (`stats_cache_seconds`), oublié dès qu'un ouvrage est enregistré ou supprimé.
 
@@ -163,7 +166,7 @@ php artisan infrastructures:check-inspections  # inspections en retard (chaque j
 
 **Plan de maintenance par zone (IA)** : bouton « Générer un plan de maintenance » sur la fiche d'une zone (composant Livewire `ZoneMaintenancePlan`). Le code (`MaintenancePlanner`) sélectionne et classe les 5 ouvrages prioritaires : score de risque + retard d'inspection (jusqu'à 30) + 5 par incident ouvert (jusqu'à 25) + 10 si l'état est critique. Le LLM reçoit les rangs et les données techniques (ni code, ni nom d'ouvrage) et rédige un résumé, puis une action et sa justification pour chaque rang ; la réponse est validée (tous les rangs, longueurs), sinon le plan est généré par des règles. Le plan est enregistré sur la zone et exportable en PDF.
 
-**Tests** : `Livewire/InfrastructureMapTest` (5), `InfrastructureStatsTest` (3), `InfrastructureImportTest` (6), `InfrastructureSearchAiTest` (5), `ZoneMaintenancePlanTest` (5).
+**Tests** : `Livewire/InfrastructureMapTest` (6), `InfrastructureStatsTest` (3), `InfrastructureImportTest` (6), `InfrastructureSearchAiTest` (5), `ZoneMaintenancePlanTest` (5).
 
 ## Module Qualité de l'eau
 
