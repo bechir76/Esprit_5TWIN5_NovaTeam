@@ -10,8 +10,7 @@ use Illuminate\Support\Facades\Notification;
 
 /**
  * Chaque jour (routes/console.php) : repère les ouvrages dont l'inspection est en retard et prévient les
- * gestionnaires et administrateurs, une seule fois par échéance (idempotent : inspection_overdue_notified_at,
- * remis à vide quand la prochaine inspection change).
+ * gestionnaires et administrateurs, une seule fois par échéance (idempotent).
  */
 class CheckInfrastructureInspections extends Command
 {
@@ -27,7 +26,6 @@ class CheckInfrastructureInspections extends Command
         $overdue = Infrastructure::query()->with('zone')->inspectionOverdue()->whereNull('inspection_overdue_notified_at')->get();
 
         foreach ($overdue as $infrastructure) {
-            // Mise à jour conditionnelle : un passage concurrent ne notifie pas deux fois
             $marked = Infrastructure::query()->whereKey($infrastructure->id)->whereNull('inspection_overdue_notified_at')
                 ->update(['inspection_overdue_notified_at' => now()]);
 

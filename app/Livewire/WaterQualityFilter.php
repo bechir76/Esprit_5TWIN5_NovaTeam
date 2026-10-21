@@ -27,10 +27,17 @@ class WaterQualityFilter extends Component
     {
         $selectedZone = ctype_digit($this->zone) ? (int) $this->zone : null;
 
+        // A1/A4 : charger les zones avec leur WQRI pour le feu tricolore public
+        $zones = Zone::orderBy('name')->get();
+
+        // Indexer les zones par id pour accès rapide dans la vue
+        $zonesById = $zones->keyBy('id');
+
         return view('livewire.water-quality-filter', [
-            'zones' => Zone::orderBy('name')->get(),
-            'lastByZone' => WaterAnalysis::latestValidatedByZone($selectedZone),
-            'mainParams' => WaterParameter::publicMain(),
+            'zones'        => $zones,
+            'zonesById'    => $zonesById,
+            'lastByZone'   => WaterAnalysis::latestValidatedByZone($selectedZone),
+            'mainParams'   => WaterParameter::publicMain(),
             'selectedZone' => $selectedZone,
         ]);
     }

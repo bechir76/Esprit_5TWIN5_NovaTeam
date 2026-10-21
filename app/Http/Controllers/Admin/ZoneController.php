@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\AnalysisStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreZoneRequest;
 use App\Http\Requests\Admin\UpdateZoneRequest;
@@ -58,7 +59,16 @@ class ZoneController extends Controller
         $infrastructures = $zone->infrastructures()->orderBy('code')->get();
         $statusCounts = $infrastructures->countBy(fn ($infrastructure) => $infrastructure->status->value);
 
-        return view('pages.zones.show', compact('zone', 'infrastructures', 'statusCounts'));
+        // A1/A3 : WQRI de la zone — charger les 5 dernières analyses validées pour la sparkline
+        $wqriAnalyses = \App\Models\WaterAnalysis::query()
+            ->with('measurements')
+            ->whereHas('infrastructure', fn ($q) => $q->where('zone_id', $zone->id))
+            ->where('status', \App\Enums\AnalysisStatus::Validee->value)
+            ->orderByDesc('sampled_at')
+            ->limit(5)
+            ->get();
+
+        return view('pages.zones.show', compact('zone', 'infrastructures', 'statusCounts', 'wqriAnalyses'));
     }
 
     public function edit(Zone $zone): View

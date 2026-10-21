@@ -15,6 +15,8 @@
   <x-page-header title="Qualité de l'eau">
     <div class="flex flex-wrap items-center gap-2.5">
       <a class="btn btn-ghost" href="{{ route('admin.measurements.index') }}">Mesures non conformes</a>
+      <a class="btn btn-ghost" href="{{ route('admin.water-analyses.import') }}">Import CSV</a>
+      <a class="btn btn-ghost" href="{{ route('admin.water-analyses.executive-summary') }}">Résumé IA</a>
       <a class="btn btn-primary" href="{{ route('admin.water-analyses.create') }}">+ Nouvelle analyse</a>
     </div>
   </x-page-header>

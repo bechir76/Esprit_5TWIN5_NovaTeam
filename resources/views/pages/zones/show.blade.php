@@ -30,6 +30,94 @@
     <div><span class="caption block">Description</span><p class="mt-1.5 max-w-[70ch]">{{ $zone->description }}</p></div>
     @endif
   </div>
+  {{-- A3 : Indice de Risque Sanitaire WQRI --}}
+  @php
+    $wqriLevel = $zone->wqri_level ? \App\Enums\WqriLevel::tryFrom($zone->wqri_level) : null;
+    $wqriFactors = $zone->wqri_factors ?? [];
+  @endphp
+  <div class="card p-[18px] flex flex-col gap-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--water)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+        <h2 class="!mb-0">Indice de Risque Sanitaire (WQRI)</h2>
+      </div>
+      <form method="POST" action="{{ route('admin.zones.maintenance-plan', $zone) }}">
+        @csrf
+        {{-- On réutilise l'endpoint de recalcul WQRI via Artisan ou on ajoute un bouton dédié ci-dessous --}}
+      </form>
+      @if ($zone->wqri_computed_at)
+        <span class="text-[.78rem] text-muted">Calculé le {{ $zone->wqri_computed_at->format('d/m/Y à H:i') }}</span>
+      @endif
+    </div>
+
+    @if ($zone->wqri_score !== null && $wqriLevel)
+    <div class="grid grid-fit-[170px] gap-4">
+      {{-- Score principal --}}
+      <div class="flex flex-col gap-1">
+        <span class="caption block">Score WQRI</span>
+        <div class="flex items-end gap-2">
+          <span class="font-mono text-[2rem] leading-none font-extrabold" style="color: var(--color-{{ match($wqriLevel) { \App\Enums\WqriLevel::Critique => 'crit', \App\Enums\WqriLevel::Eleve => 'warn', \App\Enums\WqriLevel::Moyen => 'info', \App\Enums\WqriLevel::Faible => 'teal' } }})">
+            {{ $zone->wqri_score }}
+          </span>
+          <span class="text-muted text-[.85rem] mb-1">/ 100</span>
+        </div>
+        <div class="h-2 rounded-full bg-line overflow-hidden mt-1">
+          <div class="h-full rounded-full" style="width:{{ $zone->wqri_score }}%; background: var(--color-{{ match($wqriLevel) { \App\Enums\WqriLevel::Critique => 'crit', \App\Enums\WqriLevel::Eleve => 'warn', \App\Enums\WqriLevel::Moyen => 'info', \App\Enums\WqriLevel::Faible => 'teal' } }})"></div>
+        </div>
+      </div>
+      {{-- Niveau --}}
+      <div class="flex flex-col gap-1">
+        <span class="caption block">Niveau de risque</span>
+        <x-status-badge :value="$wqriLevel->label()" :variant="$wqriLevel->badge()" dot />
+      </div>
+    </div>
+
+    {{-- Facteurs détaillés --}}
+    @if (!empty($wqriFactors))
+    <div>
+      <span class="caption block mb-2">Facteurs contributifs</span>
+      <div class="flex flex-col gap-2">
+        @foreach ($wqriFactors as $key => $factor)
+        @php
+          $pct = (int) round($factor['normalized'] * 100);
+          $contribution = (int) round($factor['normalized'] * $factor['weight'] * 100);
+        @endphp
+        <div class="flex items-center gap-3">
+          <div class="w-[140px] shrink-0 text-[.8rem] text-muted truncate capitalize">{{ str_replace('_', ' ', $key) }}</div>
+          <div class="flex-1 flex items-center gap-2">
+            <div class="flex-1 h-[6px] rounded-full bg-line overflow-hidden">
+              <div class="h-full rounded-full @if($pct >= 70) bg-crit @elseif($pct >= 40) bg-warn @else bg-teal @endif" style="width:{{ $pct }}%"></div>
+            </div>
+            <span class="font-mono text-[.78rem] w-[38px] text-right text-muted">{{ $pct }}&thinsp;%</span>
+          </div>
+          <span class="text-[.75rem] text-muted w-[200px] hidden min-[900px]:block">{{ $factor['label'] }}</span>
+        </div>
+        @endforeach
+      </div>
+    </div>
+    @endif
+
+    {{-- Résumé IA --}}
+    @if ($zone->wqri_summary)
+    <div class="rounded-[6px] bg-surface-2 border border-line px-4 py-3">
+      <div class="flex items-center gap-1.5 mb-1.5">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--water)" stroke-width="2" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        <span class="text-[.75rem] font-semibold uppercase tracking-wider text-muted">Analyse IA</span>
+      </div>
+      <p class="text-[.88rem] leading-relaxed">{{ $zone->wqri_summary }}</p>
+    </div>
+    @endif
+
+    @else
+    <div class="rounded-[6px] bg-surface-2 border border-line px-4 py-4 text-[.88rem] text-muted flex items-center gap-2.5">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      WQRI non encore calculé pour cette zone.
+      Lancez <code class="font-mono bg-line px-1.5 py-0.5 rounded text-[.8rem]">php artisan zones:score-wqri --zone={{ $zone->id }}</code>
+      ou attendez le recalcul automatique quotidien.
+    </div>
+    @endif
+  </div>
+
   {{-- B3 : plan de maintenance (ouvrages classés par le code, texte de l'IA ou des règles) --}}
   <livewire:zone-maintenance-plan :zone="$zone" />
 

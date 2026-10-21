@@ -23,14 +23,25 @@
       <a class="btn btn-ghost" href="{{ route('admin.zones.index') }}">Réinitialiser</a>
       @endif
     </form>
-    <div class="overflow-x-auto"><table class="data-table"><thead><tr><th>Zone</th><th>Commune</th><th>Gouvernorat</th><th>Population desservie</th><th>Infrastructures</th><th></th></tr></thead><tbody>
+    <div class="overflow-x-auto"><table class="data-table"><thead><tr><th>Zone</th><th>Commune</th><th>Gouvernorat</th><th>Population desservie</th><th>Infrastructures</th><th>WQRI</th><th></th></tr></thead><tbody>
       @forelse ($zones as $zone)
+      @php $wqriLevel = $zone->wqri_level ? \App\Enums\WqriLevel::tryFrom($zone->wqri_level) : null; @endphp
       <tr>
         <td><a href="{{ route('admin.zones.show', $zone) }}"><strong>{{ $zone->name }}</strong></a></td>
         <td>{{ $zone->municipality }}</td>
         <td>{{ $zone->governorate }}</td>
         <td class="font-mono">{{ $zone->population_served ? number_format($zone->population_served, 0, ',', ' ').' hab.' : '—' }}</td>
         <td><a class="font-mono text-info-fg underline" href="{{ route('admin.infrastructures.index', ['zone' => $zone->id]) }}">{{ $zone->infrastructures_count }}</a></td>
+        <td>
+          @if ($wqriLevel && $zone->wqri_score !== null)
+            <div class="flex items-center gap-1.5">
+              <span class="font-mono text-[.88rem] font-semibold">{{ $zone->wqri_score }}</span>
+              <x-status-badge :value="$wqriLevel->label()" :variant="$wqriLevel->badge()" />
+            </div>
+          @else
+            <span class="text-muted text-[.8rem]">—</span>
+          @endif
+        </td>
         <td><div class="flex justify-end gap-1.5">
           <a class="btn-icon" href="{{ route('admin.zones.show', $zone) }}" title="Voir">{!! $eye !!}</a>
           <a class="btn-icon" href="{{ route('admin.zones.edit', $zone) }}" title="Modifier">{!! $edit !!}</a>
@@ -38,7 +49,7 @@
         </div></td>
       </tr>
       @empty
-      <tr><td colspan="6" class="text-muted text-center p-7">Aucune zone ne correspond à cette recherche.</td></tr>
+      <tr><td colspan="7" class="text-muted text-center p-7">Aucune zone ne correspond à cette recherche.</td></tr>
       @endforelse
     </tbody></table></div>
     <div class="card-footer">

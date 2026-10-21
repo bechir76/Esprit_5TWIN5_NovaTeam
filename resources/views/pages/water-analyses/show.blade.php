@@ -21,6 +21,10 @@
       <x-status-badge :value="$analysis->status->label()" :variant="$analysis->status->badge()" dot />
     </x-slot:badges>
     <div class="flex flex-wrap items-center gap-2.5">
+      <a class="btn btn-ghost" href="{{ route('admin.water-analyses.bulletin', $analysis) }}" target="_blank">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        Bulletin PDF
+      </a>
       <a class="btn btn-ghost" href="{{ route('admin.water-analyses.edit', $analysis) }}">Modifier</a>
       <button class="btn btn-danger" type="button"
         data-del="{{ $analysis->reference }}"
@@ -96,6 +100,13 @@
                 <td><strong>{{ $param->label() }}</strong></td>
                 <td class="font-mono">
                   {{ $val }}@if ($param->unit()) <small class="text-muted"> {{ $param->unit() }}</small>@endif
+                  {{-- B1 : badge anomalie statistique --}}
+                  @if ($measurement->is_anomaly)
+                  <span class="ml-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[.74rem] font-medium bg-violet-50 text-violet-700">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    Anomalie
+                  </span>
+                  @endif
                 </td>
                 <td class="text-muted text-[.84rem]">{{ $param->thresholdHint() }}</td>
                 <td>
@@ -115,6 +126,17 @@
                   </div>
                 </td>
               </tr>
+              {{-- B1 : explication de l'anomalie --}}
+              @if ($measurement->is_anomaly && $measurement->anomaly_explanation)
+              <tr>
+                <td colspan="5" class="bg-violet-50 text-violet-800 text-[.82rem] py-2 px-4 border-b border-violet-100">
+                  ⚠ {{ $measurement->anomaly_explanation }}
+                  @if ($measurement->z_score !== null)
+                  <span class="font-mono ml-2 opacity-60">Z={{ $measurement->z_score }}</span>
+                  @endif
+                </td>
+              </tr>
+              @endif
               @empty
               <tr>
                 <td colspan="5" class="text-muted text-center p-7">
@@ -163,6 +185,57 @@
         <a class="btn btn-ghost justify-center mt-1.5"
           href="{{ route('admin.infrastructures.show', $analysis->infrastructure) }}">Voir l'infrastructure</a>
       </div>
+
+      {{-- A2 : alerte de dépassement de seuil --}}
+      @if ($analysis->has_alert && $analysis->alert_parameters)
+      <div class="card p-[18px] flex flex-col gap-2" style="border-left:3px solid var(--crit)">
+        <h2 class="flex items-center gap-1.5" style="color:var(--crit-fg)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Alerte déclenchée
+        </h2>
+        <ul class="flex flex-col gap-1 text-[.86rem]">
+          @foreach ($analysis->alert_parameters as $v)
+          <li>● <strong>{{ $v['parameter'] }}</strong> : {{ $v['value'] }} — seuil {{ $v['threshold'] }}</li>
+          @endforeach
+        </ul>
+        @if ($analysis->alert_dispatched_at)
+        <p class="caption text-muted">Notifié le {{ $analysis->alert_dispatched_at->format('d/m/Y à H:i') }}</p>
+        @endif
+      </div>
+      @endif
+
+      {{-- B2 : prédiction de dégradation IA --}}
+      @if ($analysis->ai_degradation_prediction)
+      <div class="card p-[18px] flex flex-col gap-2" style="border-left:3px solid var(--water)">
+        <h2 class="flex items-center gap-1.5">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--water)" stroke-width="2" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          Prédiction IA
+        </h2>
+        <p class="text-[.87rem] leading-relaxed">{{ $analysis->ai_degradation_prediction }}</p>
+        @if ($analysis->ai_degradation_at)
+        <p class="caption text-muted">Calculé le {{ $analysis->ai_degradation_at->format('d/m/Y') }}</p>
+        @endif
+      </div>
+      @endif
+
+      {{-- B5 : fréquence d'échantillonnage recommandée --}}
+      @if ($analysis->ai_sampling_frequency_days)
+      <div class="card p-[18px] flex flex-col gap-2">
+        <h2>Fréquence recommandée</h2>
+        <div class="font-mono text-[1.4rem] font-bold leading-none">
+          {{ $analysis->ai_sampling_frequency_days }}
+          <span class="font-normal text-muted text-[.9rem]">jours</span>
+        </div>
+        <p class="text-[.83rem] text-muted">Entre deux prélèvements sur cette infrastructure.</p>
+      </div>
+      @endif
+
+      {{-- Bulletin PDF --}}
+      <a class="btn btn-ghost justify-center gap-2"
+         href="{{ route('admin.water-analyses.bulletin', $analysis) }}" target="_blank">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        Télécharger le bulletin PDF
+      </a>
 
     </aside>
   </div>

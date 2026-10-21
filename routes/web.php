@@ -127,6 +127,14 @@ Route::prefix('admin')->name('admin.')->group(function () use ($stub) {
         Route::resource('infrastructures', InfrastructureController::class);
 
         // Qualité de l'eau (module 4) : analyses (URL /admin/analyses) et mesures
+        // Routes spéciales déclarées AVANT resource pour ne pas être capturées par {analysis}
+        Route::get('/analyses/import', [\App\Http\Controllers\Admin\WaterAnalysisBulletinController::class, 'importCreate'])->name('water-analyses.import');
+        Route::post('/analyses/import', [\App\Http\Controllers\Admin\WaterAnalysisBulletinController::class, 'importStore'])->name('water-analyses.import.store');
+        Route::get('/analyses/import/modele', [\App\Http\Controllers\Admin\WaterAnalysisBulletinController::class, 'importTemplate'])->name('water-analyses.import.template');
+        Route::get('/analyses/resume-executif', [\App\Http\Controllers\Admin\WaterAnalysisBulletinController::class, 'executiveSummary'])
+            ->middleware('throttle:'.config('ai.rate_limit').',1')
+            ->name('water-analyses.executive-summary');
+
         Route::resource('analyses', WaterAnalysisController::class)
             ->names('water-analyses');
         Route::resource('analyses.mesures', MeasurementController::class)
@@ -135,6 +143,10 @@ Route::prefix('admin')->name('admin.')->group(function () use ($stub) {
             ->shallow();
         // Page index des mesures non conformes
         Route::get('/mesures', [MeasurementController::class, 'index'])->name('measurements.index');
+
+        // A5 : bulletin PDF signé + vérification publique (après resource pour avoir le binding {analysis})
+        Route::get('/analyses/{analysis}/bulletin', [\App\Http\Controllers\Admin\WaterAnalysisBulletinController::class, 'download'])->name('water-analyses.bulletin');
+        Route::get('/analyses/{analysis}/bulletin/verifier', [\App\Http\Controllers\Admin\WaterAnalysisBulletinController::class, 'verify'])->middleware('signed')->name('water-analyses.bulletin.verify');
 
         // Incidents et interventions (module 2) : le statut de l'incident se change depuis sa fiche
         // Carte, statistiques, export CSV et groupes d'incidents liés (déclarés avant la ressource)
