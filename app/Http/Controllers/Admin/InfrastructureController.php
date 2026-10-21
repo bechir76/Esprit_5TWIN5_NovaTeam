@@ -15,6 +15,7 @@ use App\Services\Infrastructures\InfrastructureAlerts;
 use App\Services\Infrastructures\InfrastructureStatsService;
 use App\Services\Infrastructures\InspectionRecorder;
 use App\Services\Infrastructures\RiskAssessment;
+use App\Support\Csv;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -144,21 +145,16 @@ class InfrastructureController extends Controller
             fputcsv($out, ['Code', 'Nom', 'Type', 'Zone', 'Matériau', 'Capacité', 'Mise en service', 'État', 'Dernière inspection', 'Prochaine inspection', 'Inspection en retard', 'Score de risque', 'Niveau de risque'], ';');
 
             foreach ($infrastructures as $i) {
-                fputcsv($out, array_map(self::csvCell(...), [
+                // Cellules neutralisées contre l'injection de formule (Excel)
+                Csv::row($out, [
                     $i->code, $i->name, $i->type->label(), $i->zone->name, $i->material ?? '', $i->formattedCapacity(), $i->commissioned_year,
                     $i->status->label(), $i->last_inspection_at?->format('d/m/Y') ?? '', $i->next_inspection_at?->format('d/m/Y') ?? '',
                     $i->isInspectionOverdue() ? 'oui' : 'non', $i->risk_score ?? '', $i->risk_level?->label() ?? '',
-                ]), ';');
+                ]);
             }
 
             fclose($out);
         }, 'infrastructures-'.now()->format('Y-m-d').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
-    }
-
-    /** Injection de formule (Excel) : une cellule texte commençant par =, +, -, @, tabulation ou retour chariot est préfixée d'une apostrophe. */
-    private static function csvCell(mixed $value): mixed
-    {
-        return is_string($value) && preg_match('/^[=+\-@\t\r]/', $value) ? "'".$value : $value;
     }
 
     /** A5 : fiche PDF d'un ouvrage (informations, risque, recommandations, dernières inspections et incidents). */

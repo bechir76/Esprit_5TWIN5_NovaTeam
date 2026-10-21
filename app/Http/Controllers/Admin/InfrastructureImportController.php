@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\ImportInfrastructuresRequest;
 use App\Models\Infrastructure;
 use App\Models\Zone;
 use App\Services\Infrastructures\InfrastructureImporter;
+use App\Support\Csv;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -51,9 +52,10 @@ class InfrastructureImportController extends Controller
         return response()->streamDownload(function () use ($zone): void {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, array_keys(InfrastructureImporter::COLUMNS), ';');
-            fputcsv($out, ['RES-ARI-901', 'Réservoir El Menzah 9', 'Réservoir', $zone, 'Béton armé', '6000', 'm³', '1995', '4,5', 'À surveiller', '15/03/2026', '36.8430', '10.1715', 'oui', 'Fissures relevées sur le radier.'], ';');
-            fputcsv($out, ['CND-ARI-902', 'Conduite DN 300 Ennasr', 'conduite', $zone, 'Fonte ductile', '4,2', 'km', '2008', '', 'bon', '', '', '', 'non', ''], ';');
+            // Le nom de la zone est saisi par le personnel : cellules neutralisées contre l'injection de formule
+            Csv::row($out, array_keys(InfrastructureImporter::COLUMNS));
+            Csv::row($out, ['RES-ARI-901', 'Réservoir El Menzah 9', 'Réservoir', $zone, 'Béton armé', '6000', 'm³', '1995', '4,5', 'À surveiller', '15/03/2026', '36.8430', '10.1715', 'oui', 'Fissures relevées sur le radier.']);
+            Csv::row($out, ['CND-ARI-902', 'Conduite DN 300 Ennasr', 'conduite', $zone, 'Fonte ductile', '4,2', 'km', '2008', '', 'bon', '', '', '', 'non', '']);
             fclose($out);
         }, 'modele-import-infrastructures.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }

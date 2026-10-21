@@ -60,6 +60,11 @@ class InfrastructureImportTest extends TestCase
         $this->assertSame(4.5, (float) $reservoir->nominal_pressure);
         $this->assertTrue($reservoir->is_public);
         $this->assertFalse(Infrastructure::firstWhere('code', 'CND-ARI-902')->is_public);
+
+        // Nom de zone saisi par le personnel : neutralisé dans le modèle (injection de formule)
+        Zone::query()->update(['name' => '=HYPERLINK("http://exemple.test")']);
+        $content = $this->actingAs($this->manager)->get(route('admin.infrastructures.import.template'))->streamedContent();
+        $this->assertStringContainsString(';"\'=HYPERLINK(""http://exemple.test"")";', $content);
     }
 
     public function test_each_line_is_validated_like_the_form_and_the_report_lists_errors_by_line(): void
