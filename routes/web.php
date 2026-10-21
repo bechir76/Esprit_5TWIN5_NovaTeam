@@ -146,7 +146,6 @@ Route::prefix('admin')->name('admin.')->group(function () use ($stub) {
 
         // A5 : bulletin PDF signé + vérification publique (après resource pour avoir le binding {analysis})
         Route::get('/analyses/{analysis}/bulletin', [\App\Http\Controllers\Admin\WaterAnalysisBulletinController::class, 'download'])->name('water-analyses.bulletin');
-        Route::get('/analyses/{analysis}/bulletin/verifier', [\App\Http\Controllers\Admin\WaterAnalysisBulletinController::class, 'verify'])->middleware('signed')->name('water-analyses.bulletin.verify');
 
         // Incidents et interventions (module 2) : le statut de l'incident se change depuis sa fiche
         // Carte, statistiques, export CSV et groupes d'incidents liés (déclarés avant la ressource)
@@ -205,4 +204,9 @@ Route::prefix('admin')->name('admin.')->group(function () use ($stub) {
         Route::view('/parametres', 'pages.settings.edit')->name('settings.edit');
         Route::put('/parametres', $stub('Seuils enregistrés.'))->name('settings.update');
     });
+
+    // Vérification publique du bulletin : l'URL signée suffit, aucune connexion requise.
+    Route::get('/analyses/{analysis}/bulletin/verifier', [\App\Http\Controllers\Admin\WaterAnalysisBulletinController::class, 'verify'])
+        ->middleware('signed')
+        ->name('water-analyses.bulletin.verify');
 });

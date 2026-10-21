@@ -98,6 +98,10 @@ class AnomalyDetector
 
         $since = now()->subDays($windowDays);
 
+        $varianceExpression = DB::connection()->getDriverName() === 'sqlite'
+            ? 'AVG(measurements.value * measurements.value) - AVG(measurements.value) * AVG(measurements.value) as var'
+            : 'VARIANCE(CAST(measurements.value AS REAL)) as var';
+
         $query = DB::table('measurements')
             ->join('water_analyses', 'measurements.water_analysis_id', '=', 'water_analyses.id')
             ->join('infrastructures', 'water_analyses.infrastructure_id', '=', 'infrastructures.id')
@@ -107,9 +111,7 @@ class AnomalyDetector
             ->where('water_analyses.sampled_at', '>=', $since)
             ->when($excludeMeasurementId, fn ($q) => $q->where('measurements.id', '!=', $excludeMeasurementId))
             ->selectRaw('COUNT(*) as samples, AVG(CAST(measurements.value AS REAL)) as avg, '
-                .DB::connection()->getDriverName() === 'sqlite'
-                    ? 'AVG(measurements.value * measurements.value) - AVG(measurements.value) * AVG(measurements.value) as var'
-                    : 'VARIANCE(CAST(measurements.value AS REAL)) as var');
+                .$varianceExpression);
 
         $row = $query->first();
         $samples = (int) ($row->samples ?? 0);
