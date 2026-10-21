@@ -15,3 +15,7 @@ Schedule::command('projects:score')->dailyAt('02:00')->withoutOverlapping();
 // Module incidents : délais dépassés (SLA) toutes les 15 minutes, incidents liés toutes les 30 minutes
 Schedule::command('incidents:check-sla')->everyFifteenMinutes()->withoutOverlapping();
 Schedule::command('incidents:cluster')->everyThirtyMinutes()->withoutOverlapping();
+
+// Module infrastructures : score de risque chaque nuit (après les incidents liés), inspections en retard chaque matin
+Schedule::command('infrastructures:score')->dailyAt('03:00')->withoutOverlapping();
+Schedule::command('infrastructures:check-inspections')->dailyAt('07:00')->withoutOverlapping();

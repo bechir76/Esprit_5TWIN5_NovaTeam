@@ -12,15 +12,15 @@
   <div class="flex flex-wrap items-center justify-between gap-5 rounded-card bg-linear-130 from-navy to-navy-2 p-[22px] text-white">
     <div>
       <h2 class="text-[1.25rem] text-white">Ce que l'IA a détecté cette semaine</h2>
-      <p class="mt-1.5 max-w-[62ch] text-[#BFD5E4]">3 anomalies sur le réseau, 41 signalements classés automatiquement et 2 infrastructures passées en risque élevé.</p>
+      <p class="mt-1.5 max-w-[62ch] text-[#BFD5E4]">3 anomalies sur le réseau, 41 signalements classés automatiquement et {{ $highRiskCount }} infrastructure{{ $highRiskCount > 1 ? 's' : '' }} en risque élevé ou critique.</p>
     </div>
-    <span class="rounded-[7px] bg-white/10 px-2.5 py-1.5 font-mono text-[.78rem] text-[#9FD9FA]">Dernière analyse : 03/10/2026 08:00</span>
+    <span class="rounded-[7px] bg-white/10 px-2.5 py-1.5 font-mono text-[.78rem] text-[#9FD9FA]">Dernier calcul du risque : {{ $lastRiskRun ? \Illuminate\Support\Carbon::parse($lastRiskRun)->format('d/m/Y H:i') : 'jamais' }}</span>
   </div>
 
   <div class="grid grid-fit-[460px] gap-[18px]">
     <div class="card">
-      <div class="card-header"><h2>Score de risque prédictif</h2><span class="text-[.78rem] text-muted">Probabilité de défaillance à 90 jours</span></div>
-      <div class="overflow-x-auto"><table class="data-table min-w-[480px]"><thead><tr><th>Infrastructure</th><th>Facteurs</th><th class="w-[38%]">Risque</th></tr></thead><tbody id="riskTable"></tbody></table></div>
+      <div class="card-header"><h2>Score de risque prédictif</h2><a class="text-[.78rem] text-muted underline" href="{{ route('admin.infrastructures.index', ['sort' => 'risk']) }}">Les 5 ouvrages les plus à risque (score sur 100)</a></div>
+      @include('partials.riskiest-infrastructures')
     </div>
     <div class="card">
       <div class="card-header"><h2>Détection d'anomalies</h2><span class="badge b-crit dot">Pression · Ariana Nord</span></div>

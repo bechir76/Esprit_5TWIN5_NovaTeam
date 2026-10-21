@@ -18,6 +18,8 @@ class DatabaseSeeder extends Seeder
             FundingSeeder::class,
             WaterAnalysisSeeder::class,
             MeasurementSeeder::class,
+            // Score de risque des ouvrages (après InfrastructureSeeder et les incidents / analyses qu'il prend en compte)
+            InfrastructureRiskSeeder::class,
         ]);
     }
 }

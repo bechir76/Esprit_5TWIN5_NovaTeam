@@ -144,12 +144,7 @@ fill('matrix', modules.map((m, i) => `<tr><td class="text-left!"><strong>${m[0]}
 
 /* ---------------------------------------------------------------- Analyses IA (données de démonstration) */
 
-const risk = [['Réservoir de La Soukra', 'Âge 39 ans · fissures radier', 74], ['Station Ariana Nord', '2 pannes pompe en 60 j', 68], ['Conduite fonte Bab Saadoun', 'Fonte grise 1962 · 9 fuites/an', 61], ['Conduite DN 600 Ben Arous', 'Pertes 6 m³/h', 42], ['Réservoir Mégrine', 'Inspection récente', 12]];
-
-fill('riskTable', risk.map((r) => {
-    const color = r[2] >= 60 ? 'var(--color-crit)' : r[2] >= 35 ? 'var(--color-warn)' : 'var(--color-teal)';
-    return `<tr><td><strong>${r[0]}</strong></td><td class="text-[.84rem] text-muted">${r[1]}</td><td><div class="flex items-center gap-2.5"><div class="h-2 min-w-20 flex-1 overflow-hidden rounded-full bg-surface-2"><span class="block h-full rounded-full" style="width:${r[2]}%;background:${color}"></span></div><span class="w-[38px] text-right font-mono">${r[2]} %</span></div></td></tr>`;
-}).join(''));
+/* Le tableau « Score de risque prédictif » est rendu en Blade (partials/riskiest-infrastructures). */
 
 /* Détection d'anomalie : pression sur 24 h */
 (function () {

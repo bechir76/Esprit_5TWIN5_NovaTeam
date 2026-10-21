@@ -10,9 +10,14 @@ use Illuminate\Validation\Rules\Unique;
 
 class StoreZoneRequest extends FormRequest
 {
+    /** ZonePolicy : create, ou update pour UpdateZoneRequest. */
     public function authorize(): bool
     {
-        return $this->user()->isStaff();
+        $zone = $this->route('zone');
+
+        return $zone instanceof Zone
+            ? $this->user()->can('update', $zone)
+            : $this->user()->can('create', Zone::class);
     }
 
     /**

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AiInsightsController;
 use App\Http\Controllers\Admin\AuthenticatedSessionController as AdminSessionController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\FundingController;
@@ -106,7 +107,14 @@ Route::prefix('admin')->name('admin.')->group(function () use ($stub) {
         Route::get('/', DashboardController::class)->name('dashboard');
 
         // Réseau et infrastructures (module 1) : zones de desserte et ouvrages
+        // Export CSV (filtres actifs), fiche PDF et inspections : déclarés avant la ressource (InfrastructurePolicy)
         Route::resource('zones', ZoneController::class);
+        Route::get('/infrastructures/export', [InfrastructureController::class, 'export'])->name('infrastructures.export');
+        Route::get('/infrastructures/{infrastructure}/pdf', [InfrastructureController::class, 'pdf'])->name('infrastructures.pdf');
+        Route::post('/infrastructures/{infrastructure}/inspections', [InfrastructureController::class, 'inspect'])->name('infrastructures.inspect');
+        Route::post('/infrastructures/{infrastructure}/risque', [InfrastructureController::class, 'assessRisk'])
+            ->middleware('throttle:'.config('ai.rate_limit').',1')
+            ->name('infrastructures.risk');
         Route::resource('infrastructures', InfrastructureController::class);
 
         // Qualité de l'eau (module 4) : analyses (URL /admin/analyses) et mesures
@@ -156,7 +164,7 @@ Route::prefix('admin')->name('admin.')->group(function () use ($stub) {
                 ->names('fundings');
         });
 
-        Route::view('/ia', 'pages.ai.insights')->name('ai.insights');
+        Route::get('/ia', AiInsightsController::class)->name('ai.insights');
 
         // Utilisateurs et rôles : administrateurs uniquement (Gate « manage-users »)
         Route::middleware('can:manage-users')->group(function () {

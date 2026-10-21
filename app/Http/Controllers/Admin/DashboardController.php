@@ -37,10 +37,13 @@ class DashboardController extends Controller
         }
 
         return view('pages.dashboard', [
-            'atRiskCount'       => Infrastructure::atRisk()->count(),
-            'criticalCount'     => Infrastructure::ofStatus(InfrastructureStatus::Critique)->count(),
-            'lastNonCompliant'  => $lastNonCompliant,
-            'worstMeasurement'  => $worstMeasurement,
+            'atRiskCount' => Infrastructure::atRisk()->count(),
+            'criticalCount' => Infrastructure::ofStatus(InfrastructureStatus::Critique)->count(),
+            // Module infrastructures : plan d'inspections et 5 ouvrages les plus à risque (score prédictif)
+            'overdueInspections' => Infrastructure::inspectionOverdue()->count(),
+            'riskiest' => Infrastructure::with('zone')->mostAtRisk()->limit(5)->get(),
+            'lastNonCompliant' => $lastNonCompliant,
+            'worstMeasurement' => $worstMeasurement,
         ] + $this->incidentStats() + $this->projectStats());
     }
 

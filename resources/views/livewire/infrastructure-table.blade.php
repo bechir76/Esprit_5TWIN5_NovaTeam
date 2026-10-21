@@ -1,4 +1,5 @@
-{{-- Composant Livewire InfrastructureTable : la liste se met à jour à la saisie et au changement de filtre.
+{{-- Composant Livewire InfrastructureTable : la liste se met à jour à la saisie, au changement de filtre et de tri.
+     Colonne « Risque » : score prédictif (RiskScorer) ; badge « Inspection en retard » (Infrastructure::isInspectionOverdue()).
      Les boutons de suppression ouvrent la modale <x-confirm-delete /> du layout (data-del + data-action). --}}
 @php
     // Icônes des actions
@@ -30,15 +31,26 @@
       <option value="{{ $case->value }}">{{ $case->label() }}</option>
       @endforeach
     </select>
+    <select class="input" name="inspection" wire:model.live="inspection" aria-label="Inspection">
+      <option value="">Toutes les inspections</option>
+      <option value="overdue">Inspection en retard</option>
+    </select>
+    <select class="input" name="sort" wire:model.live="sort" aria-label="Tri">
+      <option value="">Trier par code</option>
+      <option value="risk">Trier par risque</option>
+    </select>
     <noscript><button class="btn btn-ghost" type="submit">Filtrer</button></noscript>
     @if ($filtered)
     <button class="btn btn-ghost" type="button" wire:click="resetFilters">Réinitialiser</button>
     @endif
     <span class="self-center text-[.8rem] text-muted" wire:loading.delay>Recherche…</span>
+    @if ($exportUrl)
+    <a class="btn btn-ghost ml-auto" href="{{ $exportUrl }}" title="Export CSV de la liste filtrée">Exporter CSV</a>
+    @endif
   </form>
 
   <div class="overflow-x-auto transition-opacity" wire:loading.class="opacity-60">
-    <table class="data-table"><thead><tr><th>Code</th><th>Nom</th><th>Type</th><th>Zone</th><th>Capacité</th><th>État</th><th>Dernière inspection</th><th></th></tr></thead><tbody>
+    <table class="data-table"><thead><tr><th>Code</th><th>Nom</th><th>Type</th><th>Zone</th><th>Capacité</th><th>État</th><th><a class="inline-flex items-center gap-1" href="{{ route('admin.infrastructures.index', ['sort' => $sort === 'risk' ? null : 'risk']) }}" wire:click.prevent="sortBy('risk')" title="Trier par risque">Risque{{ $sort === 'risk' ? ' ↓' : '' }}</a></th><th>Prochaine inspection</th><th></th></tr></thead><tbody>
       @forelse ($infrastructures as $infrastructure)
       <tr wire:key="infra-{{ $infrastructure->id }}">
         <td class="font-mono text-[.8rem]">{{ $infrastructure->code }}</td>
@@ -47,7 +59,8 @@
         <td><a class="underline" href="{{ route('admin.zones.show', $infrastructure->zone) }}">{{ $infrastructure->zone->name }}</a></td>
         <td class="font-mono">{{ $infrastructure->formattedCapacity() }}</td>
         <td><x-status-badge :value="$infrastructure->status->label()" :variant="$infrastructure->status->badge()" dot /></td>
-        <td class="font-mono">{{ $infrastructure->last_inspection_at?->format('d/m/Y') ?? '—' }}</td>
+        <td>@if ($infrastructure->risk_score !== null)<span class="inline-flex items-center gap-2"><span class="font-mono">{{ $infrastructure->risk_score }}</span><x-status-badge :value="$infrastructure->risk_level->label()" :variant="$infrastructure->risk_level->badge()" /></span>@else<span class="text-muted">Non évalué</span>@endif</td>
+        <td class="font-mono">{{ $infrastructure->next_inspection_at?->format('d/m/Y') ?? '—' }}@if ($infrastructure->isInspectionOverdue())<br><x-status-badge value="Inspection en retard" variant="b-crit" />@endif</td>
         <td><div class="flex justify-end gap-1.5">
           <a class="btn-icon" href="{{ route('admin.infrastructures.show', $infrastructure) }}" title="Voir">{!! $eye !!}</a>
           <a class="btn-icon" href="{{ route('admin.infrastructures.edit', $infrastructure) }}" title="Modifier">{!! $edit !!}</a>
@@ -55,7 +68,7 @@
         </div></td>
       </tr>
       @empty
-      <tr><td colspan="8" class="p-7 text-center text-muted">Aucune infrastructure ne correspond à ces critères.</td></tr>
+      <tr><td colspan="9" class="p-7 text-center text-muted">Aucune infrastructure ne correspond à ces critères.</td></tr>
       @endforelse
     </tbody></table>
   </div>

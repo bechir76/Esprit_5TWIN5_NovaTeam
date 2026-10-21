@@ -8,13 +8,16 @@ use App\Http\Requests\Admin\UpdateZoneRequest;
 use App\Models\Zone;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
-/** CRUD des zones de desserte (personnel). */
+/** CRUD des zones de desserte (personnel, ZonePolicy). */
 class ZoneController extends Controller
 {
     public function index(Request $request): View
     {
+        Gate::authorize('viewAny', Zone::class);
+
         $filters = $request->validate([
             'q' => ['nullable', 'string', 'max:100'],
         ]);
@@ -31,6 +34,8 @@ class ZoneController extends Controller
 
     public function create(): View
     {
+        Gate::authorize('create', Zone::class);
+
         return view('pages.zones.form', ['zone' => new Zone]);
     }
 
@@ -43,6 +48,8 @@ class ZoneController extends Controller
 
     public function show(Zone $zone): View
     {
+        Gate::authorize('view', $zone);
+
         $infrastructures = $zone->infrastructures()->orderBy('code')->get();
         $statusCounts = $infrastructures->countBy(fn ($infrastructure) => $infrastructure->status->value);
 
@@ -51,6 +58,8 @@ class ZoneController extends Controller
 
     public function edit(Zone $zone): View
     {
+        Gate::authorize('update', $zone);
+
         return view('pages.zones.form', ['zone' => $zone->loadCount('infrastructures')]);
     }
 
@@ -64,6 +73,8 @@ class ZoneController extends Controller
     /** Refusée tant que la zone contient des infrastructures (la clé étrangère est aussi en restrictOnDelete). */
     public function destroy(Zone $zone): RedirectResponse
     {
+        Gate::authorize('delete', $zone);
+
         $count = $zone->infrastructures()->count();
 
         if ($count > 0) {

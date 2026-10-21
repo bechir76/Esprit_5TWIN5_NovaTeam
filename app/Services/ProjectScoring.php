@@ -9,7 +9,8 @@ use App\Models\Project;
 
 /**
  * Score de priorité 0-100, calculé par du code déterministe (jamais par le LLM) à partir de données
- * en lecture seule : incidents récents et gravité sur l'ouvrage lié, état de l'ouvrage, population de la zone,
+ * en lecture seule : incidents récents et gravité sur l'ouvrage lié, score de risque de l'ouvrage (ou son état
+ * s'il n'est pas encore évalué), population de la zone,
  * budget. Poids et plafonds : config/projects.php (scoring).
  */
 class ProjectScoring
@@ -57,12 +58,21 @@ class ProjectScoring
                 'weight' => $weights['severity'],
                 'label' => $count ? 'gravité moyenne '.number_format($severity, 1, ',', '').' / 4' : 'aucun incident récent',
             ],
-            'infrastructure' => [
-                'value' => $status?->value,
-                'normalized' => $status ? self::STATUS_POINTS[$status->value] : 0.0,
-                'weight' => $weights['infrastructure'],
-                'label' => $status ? 'ouvrage « '.mb_strtolower($status->label()).' »' : 'aucun ouvrage rattaché',
-            ],
+            // Score de risque prédictif de l'ouvrage (module infrastructures) s'il est calculé, sinon son état
+            'infrastructure' => match (true) {
+                $infrastructure?->risk_score !== null => [
+                    'value' => $infrastructure->risk_score,
+                    'normalized' => $infrastructure->risk_score / 100,
+                    'weight' => $weights['infrastructure'],
+                    'label' => "ouvrage à risque {$infrastructure->risk_level->label()} ({$infrastructure->risk_score}/100)",
+                ],
+                default => [
+                    'value' => $status?->value,
+                    'normalized' => $status ? self::STATUS_POINTS[$status->value] : 0.0,
+                    'weight' => $weights['infrastructure'],
+                    'label' => $status ? 'ouvrage « '.mb_strtolower($status->label()).' »' : 'aucun ouvrage rattaché',
+                ],
+            },
             'population' => [
                 'value' => $population,
                 'normalized' => min(1, $population / $config['population_ceiling']),

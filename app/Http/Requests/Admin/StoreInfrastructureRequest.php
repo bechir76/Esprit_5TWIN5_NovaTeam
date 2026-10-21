@@ -14,9 +14,14 @@ use Illuminate\Validation\Rules\Unique;
 
 class StoreInfrastructureRequest extends FormRequest
 {
+    /** InfrastructurePolicy : create, ou update pour UpdateInfrastructureRequest. */
     public function authorize(): bool
     {
-        return $this->user()->isStaff();
+        $infrastructure = $this->route('infrastructure');
+
+        return $infrastructure instanceof Infrastructure
+            ? $this->user()->can('update', $infrastructure)
+            : $this->user()->can('create', Infrastructure::class);
     }
 
     /**

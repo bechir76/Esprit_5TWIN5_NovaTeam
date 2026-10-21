@@ -118,6 +118,39 @@ Une zone qui contient encore des infrastructures ne peut pas être supprimée (m
 
 **Tests** : `tests/Feature/ZoneTest.php` et `tests/Feature/InfrastructureTest.php`.
 
+### Fonctionnalités avancées et IA
+
+**Plan d'inspections** : la fréquence d'inspection dépend du type et de l'état de l'ouvrage (la plus courte s'applique, par exemple un ouvrage critique tous les 3 mois ; `config/infrastructures.php`, `inspection_months`). La colonne `next_inspection_at` est recalculée à chaque enregistrement. Scope `inspectionOverdue()`, badge « Inspection en retard », filtre dans la liste et KPI sur le tableau de bord. Sur la fiche, « Enregistrer une inspection » (date, nouvel état, note ; `StoreInspectionRequest`) met à jour `last_inspection_at`, `next_inspection_at` et l'historique.
+
+**Score de risque prédictif (IA)** : score 0-100 calculé par le code (`App\Services\Infrastructures\RiskScorer`) à partir de 7 facteurs normalisés entre 0 et 1 et pondérés dans `config/infrastructures.php` (`risk.weights`) : âge, état, matériau, inspection en retard, incidents (ouverts, critiques, sur 12 mois), groupes d'incidents liés (`cluster_key`) et analyses d'eau non conformes. Niveau (`RiskLevel`) : faible, moyen, élevé (≥ 45), critique (≥ 70). Le LLM (`App\Services\Ai\InfrastructureAiService`, même client et même configuration que les autres modules) rédige seulement l'explication (2 à 3 phrases) et 3 recommandations, en JSON validé ; il ne reçoit que le type, l'âge, le matériau, l'état, le score et les facteurs (aucun nom, code, texte libre ni donnée personnelle). Sans clé API ou si la réponse est invalide, le texte est généré par des règles (`risk_source` = `regles`, sinon `ia`). Colonnes : `risk_score`, `risk_level`, `risk_factors`, `risk_summary`, `risk_recommendations`, `risk_computed_at`, `risk_source`.
+
+- Bouton « Recalculer » sur la fiche (composant Livewire `InfrastructureRisk`, état de chargement, `AI_RATE_LIMIT` recalculs par minute) ; colonne « Risque » et tri par risque dans la liste ; les 5 ouvrages les plus à risque sur `/admin/ia` et le tableau de bord.
+- La priorité des projets (`ProjectScoring`) utilise le score de risque de l'ouvrage lié quand il est calculé, sinon son état.
+
+**Historique** (spatie/laravel-activitylog, journal `infrastructures`) : changements d'état et des données principales, inspections (ancien et nouvel état, note) et recalculs du risque, affichés en timeline (qui, quand, avant → après).
+
+**Fiche 360°** (`/admin/infrastructures/{id}`) : onglets Informations, Incidents liés (avec leurs interventions), Projets, Analyses d'eau et Historique (eager loading) ; indicateurs : incidents sur 12 mois, délai moyen de résolution, montant investi dans les projets (dons confirmés), taux de conformité des analyses.
+
+**Policies** : `ZonePolicy` et `InfrastructurePolicy` (rôles existants) : le personnel gère les zones et les ouvrages, enregistre les inspections, recalcule le risque et télécharge la fiche PDF ; l'export CSV est réservé à l'administrateur et au gestionnaire ; le citoyen ne peut rien modifier.
+
+**Exports** : `/admin/infrastructures/export` (CSV avec les filtres et le tri actifs, séparateur `;`, UTF-8 avec BOM, bouton « Exporter CSV » de la liste) et `/admin/infrastructures/{id}/pdf` (fiche dompdf : informations, score, facteurs, recommandations, dernières inspections et incidents).
+
+**Notifications** (mail + centre de notifications, en queue) aux gestionnaires et administrateurs actifs : ouvrage passé à l'état critique, risque passé au niveau critique, inspection en retard (une fois par échéance).
+
+**Commandes** (planifiées dans `routes/console.php`) :
+
+```bash
+php artisan infrastructures:score              # tous les ouvrages (chaque nuit à 03:00)
+php artisan infrastructures:score RES-ARI-004  # un ouvrage (code ou id)
+php artisan infrastructures:check-inspections  # inspections en retard (chaque jour à 07:00, idempotente)
+```
+
+**Configuration** : `config/infrastructures.php` (fréquences d'inspection, poids, plafonds et seuils du risque) ; `.env` : `AI_PROVIDER`, `ANTHROPIC_API_KEY` ou `GEMINI_API_KEY`, `AI_RATE_LIMIT`, `AI_INFRASTRUCTURES_ENABLED` (false = texte par règles uniquement).
+
+**Données de test** : `InfrastructureRiskSeeder` calcule le score de chaque ouvrage sans appel API (texte par règles, sans notification), après les incidents et les analyses d'eau.
+
+**Tests** (LLM simulé ou `Http::fake`, aucun appel réseau) : `InfrastructureAiTest` (11), `InfrastructureAdvancedTest` (12).
+
 ## Module Qualité de l'eau
 
 Module 4 « Qualité de l'eau » : analyses physico-chimiques et bactériologiques réalisées sur les infrastructures du réseau.

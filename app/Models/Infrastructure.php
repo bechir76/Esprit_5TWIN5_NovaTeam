@@ -5,12 +5,16 @@ namespace App\Models;
 use App\Enums\CapacityUnit;
 use App\Enums\InfrastructureStatus;
 use App\Enums\InfrastructureType;
+use App\Enums\RiskLevel;
 use Database\Factories\InfrastructureFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * Ouvrage du réseau (réservoir, conduite, station, forage), rattaché à une zone.
@@ -21,11 +25,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *   public function incidents(): HasMany     { return $this->hasMany(Incident::class); }      // module incidents ✓
  *   public function projects(): HasMany      { return $this->hasMany(Project::class); }       // module projets ✓
  *   public function waterAnalyses(): HasMany { return $this->hasMany(WaterAnalysis::class); } // module qualité de l'eau ✓
+ *
+ * Plan d'inspections : next_inspection_at est recalculée à l'enregistrement (config/infrastructures.php).
+ * Score de risque (risk_*) : App\Services\Infrastructures\RiskAssessment. Historique : spatie/laravel-activitylog.
  */
 class Infrastructure extends Model
 {
     /** @use HasFactory<InfrastructureFactory> */
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     /** Matériaux proposés dans le formulaire. */
     public const MATERIALS = ['Béton armé', 'Fonte ductile', 'Fonte grise', 'PEHD', 'PVC', 'Acier'];
@@ -71,7 +78,39 @@ class Infrastructure extends Model
         'latitude' => 'float',
         'longitude' => 'float',
         'is_public' => 'boolean',
+        'next_inspection_at' => 'date',
+        'inspection_overdue_notified_at' => 'datetime',
+        'risk_score' => 'integer',
+        'risk_level' => RiskLevel::class,
+        'risk_factors' => 'array',
+        'risk_recommendations' => 'array',
+        'risk_computed_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        // Prochaine inspection recalculée quand la date, l'état ou le type changent ;
+        // l'alerte de retard pourra être renvoyée pour la nouvelle échéance
+        static::saving(function (self $infrastructure): void {
+            if ($infrastructure->next_inspection_at === null || $infrastructure->isDirty(['last_inspection_at', 'status', 'type'])) {
+                $infrastructure->next_inspection_at = $infrastructure->computeNextInspection();
+            }
+
+            if ($infrastructure->isDirty('next_inspection_at')) {
+                $infrastructure->inspection_overdue_notified_at = null;
+            }
+        });
+    }
+
+    /** Journal d'audit : changements d'état et des données principales (les inspections et recalculs sont journalisés à part). */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('infrastructures')
+            ->logOnly(['code', 'name', 'type', 'status', 'zone_id', 'material', 'last_inspection_at'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     /** @return BelongsTo<Zone, $this> */
     public function zone(): BelongsTo
@@ -107,6 +146,42 @@ class Infrastructure extends Model
     public function formattedPressure(): ?string
     {
         return $this->nominal_pressure === null ? null : self::formatNumber($this->nominal_pressure).' bar';
+    }
+
+    /** Âge en années (année en cours moins année de mise en service). */
+    public function age(): int
+    {
+        return max(0, (int) now()->year - (int) $this->commissioned_year);
+    }
+
+    /** Fréquence d'inspection : la plus courte entre celle du type et celle de l'état. */
+    public function inspectionIntervalMonths(): int
+    {
+        $months = config('infrastructures.inspection_months');
+
+        return (int) min(
+            $months['by_type'][$this->type?->value] ?? 12,
+            $months['by_status'][$this->status?->value] ?? 12,
+        );
+    }
+
+    /** Dernière inspection + fréquence ; jamais inspecté : à inspecter dès aujourd'hui. */
+    public function computeNextInspection(): Carbon
+    {
+        return $this->last_inspection_at
+            ? $this->last_inspection_at->copy()->addMonthsNoOverflow($this->inspectionIntervalMonths())
+            : today();
+    }
+
+    public function isInspectionOverdue(): bool
+    {
+        return $this->next_inspection_at !== null && $this->next_inspection_at->lt(today());
+    }
+
+    /** Nombre de jours de retard de l'inspection (0 si à jour). */
+    public function inspectionDaysOverdue(): int
+    {
+        return $this->isInspectionOverdue() ? (int) $this->next_inspection_at->diffInDays(today()) : 0;
     }
 
     public function hasCoordinates(): bool
@@ -146,14 +221,58 @@ class Infrastructure extends Model
      * Filtres de la liste du back office : q (recherche), type, status, zone ; une valeur vide ne filtre pas.
      * Utilisé par le composant Livewire InfrastructureTable (liste /admin/infrastructures).
      *
-     * @param  array{q?: ?string, type?: ?string, status?: ?string, zone?: int|string|null}  $filters
+     * @param  array{q?: ?string, type?: ?string, status?: ?string, zone?: int|string|null, inspection?: ?string}  $filters
      */
     public function scopeFilter(Builder $query, array $filters): void
     {
         $query->search($filters['q'] ?? null)
             ->ofType($filters['type'] ?? null)
             ->ofStatus($filters['status'] ?? null)
-            ->inZone($filters['zone'] ?? null);
+            ->inZone($filters['zone'] ?? null)
+            ->when(($filters['inspection'] ?? null) === 'overdue', fn (Builder $q) => $q->inspectionOverdue());
+    }
+
+    /**
+     * Filtres nettoyés (liste Livewire et export CSV) : une valeur hors enum ou non numérique est ignorée.
+     *
+     * @param  array<string, mixed>  $input
+     * @return array{q: ?string, type: ?string, status: ?string, zone: ?int, inspection: ?string, sort: ?string}
+     */
+    public static function normalizeFilters(array $input): array
+    {
+        $q = mb_substr(trim((string) ($input['q'] ?? '')), 0, 100);
+        $zone = (string) ($input['zone'] ?? '');
+
+        return [
+            'q' => $q !== '' ? $q : null,
+            'type' => InfrastructureType::tryFrom((string) ($input['type'] ?? ''))?->value,
+            'status' => InfrastructureStatus::tryFrom((string) ($input['status'] ?? ''))?->value,
+            'zone' => ctype_digit($zone) ? (int) $zone : null,
+            'inspection' => ($input['inspection'] ?? null) === 'overdue' ? 'overdue' : null,
+            'sort' => ($input['sort'] ?? null) === 'risk' ? 'risk' : null,
+        ];
+    }
+
+    /** Tri de la liste : par risque décroissant (non évalués en dernier) ou par code. */
+    public function scopeSorted(Builder $query, ?string $sort): void
+    {
+        if ($sort === 'risk') {
+            $query->orderByRaw('risk_score is null')->orderByDesc('risk_score');
+        }
+
+        $query->orderBy('code');
+    }
+
+    /** Prochaine inspection dépassée. */
+    public function scopeInspectionOverdue(Builder $query): void
+    {
+        $query->whereNotNull('next_inspection_at')->whereDate('next_inspection_at', '<', today());
+    }
+
+    /** Ouvrages évalués, du plus au moins à risque. */
+    public function scopeMostAtRisk(Builder $query): void
+    {
+        $query->whereNotNull('risk_score')->orderByDesc('risk_score')->orderBy('code');
     }
 
     /** Ouvrages visibles sur la carte publique. */

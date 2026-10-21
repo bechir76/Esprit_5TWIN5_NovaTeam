@@ -32,6 +32,7 @@
     <x-kpi-card label="Incidents ouverts" :value="$openIncidents" :delta="'+'.$newIncidentsThisWeek.' signalé'.($newIncidentsThisWeek > 1 ? 's' : '').' en 7 jours'" :trend="$newIncidentsThisWeek > 0 ? 'up' : null" :spark="$incidentSpark" />
     <x-kpi-card label="Incidents critiques" :value="$criticalIncidents" :delta="'+'.$newCriticalToday.' depuis hier'" :trend="$newCriticalToday > 0 ? 'up' : null" :spark="$criticalSpark" color="var(--color-crit)" />
     <x-kpi-card label="Ouvrages à risque" :value="$atRiskCount" :delta="'dont '.$criticalCount.' critique'.($criticalCount > 1 ? 's' : '')" color="var(--color-warn)" />
+    <x-kpi-card label="Inspections en retard" :value="$overdueInspections" :delta="$overdueInspections ? 'à planifier en priorité' : 'plan d’inspections à jour'" :trend="$overdueInspections ? 'up' : null" color="var(--color-crit)" />
     <x-kpi-card label="Fonds collectés" :value="\App\Models\Project::money(round($fundsCollected))" :delta="'TND · +'.\App\Models\Project::money(round($fundsThisMonth)).' ce mois'" trend="down" :spark="$fundsSpark" color="var(--color-teal)" />
     <x-kpi-card label="Utilisateurs inscrits" value="4 218" delta="+86 ce mois" trend="down" :spark="[3800, 3870, 3940, 4010, 4060, 4120, 4170, 4218]" />
   </div>
@@ -54,6 +55,11 @@
         <ul class="flex min-w-[150px] flex-1 flex-col gap-[9px]" id="donutLegend"></ul>
       </div>
     </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>Ouvrages les plus à risque</h2><a class="text-[.84rem] text-muted underline" href="{{ route('admin.infrastructures.index', ['sort' => 'risk']) }}">Tout voir</a></div>
+    @include('partials.riskiest-infrastructures')
   </div>
 
   <div class="grid grid-fit-[460px] gap-[18px]">
