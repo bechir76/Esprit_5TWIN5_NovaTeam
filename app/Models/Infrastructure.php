@@ -6,6 +6,7 @@ use App\Enums\CapacityUnit;
 use App\Enums\InfrastructureStatus;
 use App\Enums\InfrastructureType;
 use App\Enums\RiskLevel;
+use App\Services\Infrastructures\InfrastructureStatsService;
 use Database\Factories\InfrastructureFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -100,6 +102,10 @@ class Infrastructure extends Model
                 $infrastructure->inspection_overdue_notified_at = null;
             }
         });
+
+        // Statistiques du réseau (InfrastructureStatsService) recalculées après toute modification
+        static::saved(fn () => Cache::forget(InfrastructureStatsService::CACHE_KEY));
+        static::deleted(fn () => Cache::forget(InfrastructureStatsService::CACHE_KEY));
     }
 
     /** Journal d'audit : changements d'état et des données principales (les inspections et recalculs sont journalisés à part). */
@@ -221,7 +227,7 @@ class Infrastructure extends Model
      * Filtres de la liste du back office : q (recherche), type, status, zone ; une valeur vide ne filtre pas.
      * Utilisé par le composant Livewire InfrastructureTable (liste /admin/infrastructures).
      *
-     * @param  array{q?: ?string, type?: ?string, status?: ?string, zone?: int|string|null, inspection?: ?string}  $filters
+     * @param  array{q?: ?string, type?: ?string, status?: ?string, zone?: int|string|null, inspection?: ?string, risk?: ?string, min_age?: ?int}  $filters
      */
     public function scopeFilter(Builder $query, array $filters): void
     {
@@ -229,19 +235,23 @@ class Infrastructure extends Model
             ->ofType($filters['type'] ?? null)
             ->ofStatus($filters['status'] ?? null)
             ->inZone($filters['zone'] ?? null)
+            ->ofRiskLevel($filters['risk'] ?? null)
+            ->olderThan($filters['min_age'] ?? null)
             ->when(($filters['inspection'] ?? null) === 'overdue', fn (Builder $q) => $q->inspectionOverdue());
     }
 
     /**
-     * Filtres nettoyés (liste Livewire et export CSV) : une valeur hors enum ou non numérique est ignorée.
+     * Filtres nettoyés (liste Livewire, carte, recherche en langage naturel et export CSV) :
+     * une valeur hors enum, hors bornes ou non numérique est ignorée.
      *
      * @param  array<string, mixed>  $input
-     * @return array{q: ?string, type: ?string, status: ?string, zone: ?int, inspection: ?string, sort: ?string}
+     * @return array{q: ?string, type: ?string, status: ?string, zone: ?int, inspection: ?string, risk: ?string, min_age: ?int, sort: ?string}
      */
     public static function normalizeFilters(array $input): array
     {
         $q = mb_substr(trim((string) ($input['q'] ?? '')), 0, 100);
         $zone = (string) ($input['zone'] ?? '');
+        $age = (string) ($input['min_age'] ?? '');
 
         return [
             'q' => $q !== '' ? $q : null,
@@ -249,8 +259,23 @@ class Infrastructure extends Model
             'status' => InfrastructureStatus::tryFrom((string) ($input['status'] ?? ''))?->value,
             'zone' => ctype_digit($zone) ? (int) $zone : null,
             'inspection' => ($input['inspection'] ?? null) === 'overdue' ? 'overdue' : null,
+            'risk' => RiskLevel::tryFrom((string) ($input['risk'] ?? ''))?->value,
+            'min_age' => ctype_digit($age) && (int) $age > 0 && (int) $age <= 150 ? (int) $age : null,
             'sort' => ($input['sort'] ?? null) === 'risk' ? 'risk' : null,
         ];
+    }
+
+    /** Niveau de risque calculé ; vide = tous. */
+    public function scopeOfRiskLevel(Builder $query, RiskLevel|string|null $level): void
+    {
+        $value = $level instanceof RiskLevel ? $level->value : $level;
+        $query->when($value, fn (Builder $q) => $q->where('risk_level', $value));
+    }
+
+    /** Ouvrages d'au moins $years ans (année de mise en service) ; vide = tous. */
+    public function scopeOlderThan(Builder $query, ?int $years): void
+    {
+        $query->when($years, fn (Builder $q) => $q->where('commissioned_year', '<=', (int) now()->year - $years));
     }
 
     /** Tri de la liste : par risque décroissant (non évalués en dernier) ou par code. */

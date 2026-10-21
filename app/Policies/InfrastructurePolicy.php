@@ -8,8 +8,8 @@ use App\Models\User;
 
 /**
  * Infrastructures : tout le personnel (admin, gestionnaire, technicien) consulte et gère les ouvrages,
- * enregistre les inspections, recalcule le risque et télécharge la fiche PDF ; l'export CSV de la liste
- * est réservé à l'administrateur et au gestionnaire. Le citoyen ne peut rien modifier (carte publique seulement).
+ * enregistre les inspections, recalcule le risque et télécharge la fiche PDF ; l'export et l'import CSV
+ * sont réservés à l'administrateur et au gestionnaire. Le citoyen ne peut rien modifier (carte publique seulement).
  */
 class InfrastructurePolicy
 {
@@ -59,5 +59,11 @@ class InfrastructurePolicy
     public function export(User $user): bool
     {
         return in_array($user->role, [Role::Admin, Role::Gestionnaire], true);
+    }
+
+    /** Import CSV en masse : même public que l'export. */
+    public function import(User $user): bool
+    {
+        return $this->export($user);
     }
 }

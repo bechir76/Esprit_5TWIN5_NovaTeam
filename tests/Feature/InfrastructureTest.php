@@ -4,10 +4,12 @@ namespace Tests\Feature;
 
 use App\Enums\InfrastructureStatus;
 use App\Enums\InfrastructureType;
+use App\Livewire\InfrastructureMap;
 use App\Models\Infrastructure;
 use App\Models\User;
 use App\Models\Zone;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class InfrastructureTest extends TestCase
@@ -249,15 +251,19 @@ class InfrastructureTest extends TestCase
         Infrastructure::factory()->for($zone)->hidden()->create(['name' => 'Ouvrage confidentiel']);
         Infrastructure::factory()->for($zone)->withoutCoordinates()->create(['name' => 'Ouvrage sans coordonnées']);
 
-        // Noms des ouvrages envoyés au JS de la carte (window.AQUA_SITES)
-        $names = fn (array $query = []) => $this->get(route('map', $query))->assertOk()->viewData('sites')->pluck('name')->sort()->values()->all();
+        // Repères envoyés à la carte Leaflet (composant InfrastructureMap en mode public), filtres passés dans l'URL
+        $names = fn (array $query = []) => collect(Livewire::withQueryParams([])->test(InfrastructureMap::class, ['public' => true] + $query)->instance()->markers())
+            ->pluck('name')->sort()->values()->all();
 
         $this->assertSame(['Forage de Mornag F3', 'Réservoir de La Soukra'], $names());
-        $this->assertSame(['Réservoir de La Soukra'], $names(['status' => ['critique']]));
-        $this->assertSame(['Forage de Mornag F3'], $names(['type' => ['forage'], 'zone' => $zone->id]));
-        $this->assertSame([], $names(['zone' => $zone->id + 1]));
+        $this->assertSame(['Réservoir de La Soukra'], $names(['status' => 'critique']));
+        $this->assertSame(['Forage de Mornag F3'], $names(['type' => 'forage', 'zone' => (string) $zone->id]));
+        $this->assertSame([], $names(['zone' => (string) ($zone->id + 1)]));
 
-        $this->get(route('map'))->assertSee('window.AQUA_SITES', false)->assertDontSee('Ouvrage confidentiel');
+        $this->get(route('map', ['type' => 'forage']))->assertOk()
+            ->assertSeeLivewire(InfrastructureMap::class)
+            ->assertSee('Forage de Mornag F3')
+            ->assertDontSee('Ouvrage confidentiel');
     }
 
     public function test_home_and_dashboard_counts_come_from_the_database(): void

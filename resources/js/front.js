@@ -25,70 +25,7 @@ document.querySelectorAll('[data-toast]').forEach((b) => b.addEventListener('cli
 
 /* ---------------------------------------------------------------- Carte du réseau (/carte) */
 
-/* Infrastructures publiques envoyées par InfrastructureMapController (window.AQUA_SITES),
-   placées par projection linéaire de leurs coordonnées dans l'emprise window.AQUA_MAP_BOUNDS */
-const sites = window.AQUA_SITES || [];
-const bounds = window.AQUA_MAP_BOUNDS || { lat: [36.70, 36.95], lng: [10.05, 10.35] };
-
-const project = (lat, lng) => {
-    const c = (v, a, b) => Math.min(1, Math.max(0, (v - a) / (b - a)));
-    return [40 + c(lng, bounds.lng[0], bounds.lng[1]) * 820, 40 + (1 - c(lat, bounds.lat[0], bounds.lat[1])) * 480];
-};
-
-const mapLabel = (text, lat, lng) => {
-    const [x, y] = project(lat, lng);
-    return `<text x="${x.toFixed(0)}" y="${y.toFixed(0)}" fill="var(--color-muted)" font-family="IBM Plex Mono,monospace" font-size="12" text-anchor="middle">${text}</text>`;
-};
-
-if ($('mapSvg')) {
-    let svg = `<rect width="900" height="560" fill="var(--color-surface-2)"/>
-<path d="M620 0 C700 60 820 70 900 50 L900 0Z" fill="var(--color-water-soft)"/>
-<path d="M0 260 C200 240 380 300 900 280" stroke="var(--color-line)" stroke-width="16" fill="none"/>
-<path d="M260 0 C280 200 240 400 300 560" stroke="var(--color-line)" stroke-width="12" fill="none"/>
-<path d="M600 0 C580 200 640 380 620 560" stroke="var(--color-line)" stroke-width="12" fill="none"/>
-<path d="M0 470 L900 420" stroke="var(--color-line)" stroke-width="10" fill="none"/>`
-        + mapLabel('TUNIS', 36.790, 10.160) + mapLabel('ARIANA', 36.905, 10.150) + mapLabel('BEN AROUS', 36.735, 10.200)
-        + mapLabel('LA MANOUBA', 36.835, 10.080) + mapLabel('MORNAG', 36.690, 10.300);
-
-    sites.forEach((s, k) => {
-        const [x, y] = project(s.lat, s.lng);
-        svg += `<g class="group cursor-pointer" data-marker data-k="${k}" tabindex="0" role="button" aria-label="${esc(s.name)}"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" class="transition-all group-hover:[r:16px]" r="13" fill="${esc(s.color)}" opacity=".22"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7" fill="${esc(s.color)}" stroke="#fff" stroke-width="2.5"/></g>`;
-    });
-
-    fill('mapSvg', svg);
-}
-
-const pop = $('mapPop');
-const row = 'line-item';
-
-function showSite(k) {
-    const s = sites[k];
-    if (!pop || !s) return;
-    pop.innerHTML = `<div class="flex flex-wrap items-center justify-between gap-3"><span class="badge ${esc(s.badge)}">${esc(s.statusLabel)}</span><span class="font-mono text-xs text-muted">${esc(s.zone)}</span></div>
-<h3>${esc(s.name)}</h3><div class="text-[.88rem] text-muted">${esc(s.type)} · ${esc(s.capacity)}</div>
-<div class="${row}"><span>Dernière inspection</span><span class="font-mono">${esc(s.inspection)}</span></div>
-<div class="${row} border-b-0"><span>Code ouvrage</span><span class="font-mono">${esc(s.code)}</span></div>
-<a href="${url('signaler')}" class="btn btn-ghost btn-sm justify-center">Signaler un problème ici</a>`;
-}
-
-/* Fiche affichée par défaut : le premier ouvrage critique, sinon le premier */
-if (pop) {
-    if (sites.length) {
-        const critical = sites.findIndex((s) => s.status === 'critique');
-        showSite(critical < 0 ? 0 : critical);
-    } else {
-        pop.innerHTML = '<h3>Aucun ouvrage</h3><div class="text-[.88rem] text-muted">Aucune infrastructure publique ne correspond à ces filtres.</div>';
-    }
-}
-
-on('mapSvg', 'click', (e) => {
-    const g = e.target.closest('[data-marker]');
-    if (g) showSite(+g.dataset.k);
-});
-on('mapSvg', 'keydown', (e) => {
-    const g = e.target.closest('[data-marker]');
-    if (g && e.key === 'Enter') showSite(+g.dataset.k);
-});
+/* Carte Leaflet rendue par le composant Livewire InfrastructureMap (resources/views/livewire/infrastructure-map.blade.php). */
 
 /* ---------------------------------------------------------------- Chatbot (<x-chatbot />) */
 

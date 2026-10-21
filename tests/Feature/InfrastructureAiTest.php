@@ -319,24 +319,3 @@ class InfrastructureAiTest extends TestCase
         }
     }
 }
-
-/** Faux client LLM : renvoie la réponse donnée et enregistre les prompts. */
-class FakeInfrastructureLlm implements LlmClient
-{
-    /** @var list<string> */
-    public array $prompts = [];
-
-    public function __construct(private ?array $json = null) {}
-
-    public function generateJson(string $system, string $prompt, array $schema, int $maxTokens = 1024): ?array
-    {
-        $this->prompts[] = $prompt;
-
-        return $this->json;
-    }
-
-    public function answerWithTools(string $system, string $question, array $tools, callable $runTool, int $maxTurns = 4): ?string
-    {
-        return null;
-    }
-}

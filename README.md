@@ -151,6 +151,20 @@ php artisan infrastructures:check-inspections  # inspections en retard (chaque j
 
 **Tests** (LLM simulé ou `Http::fake`, aucun appel réseau) : `InfrastructureAiTest` (11), `InfrastructureAdvancedTest` (12).
 
+### Carte, statistiques, import et IA (suite)
+
+**Carte Leaflet** (composant Livewire `InfrastructureMap`, comme la carte des incidents) : sur `/carte` (ouvrages publics et géolocalisés seulement, mode public verrouillé) et sous la liste admin (chargée en différé, ouvrages masqués compris). Repères colorés selon l'état, regroupés (markercluster), popup avec nom, type, zone, risque et prochaine inspection ; filtres type, état, zone et niveau de risque sans rechargement (les repères sont renvoyés par l'événement `infrastructure-map-updated`). Repères initiaux écrits avec `Js::from`, valeurs échappées dans les popups, scripts CDN avec empreinte SRI.
+
+**Statistiques réseau** (`/admin/infrastructures/statistiques`, Chart.js) : ouvrages par état et par type, âge moyen, risque moyen et inspections en retard par zone. `InfrastructureStatsService` met le calcul en cache (`stats_cache_seconds`), oublié dès qu'un ouvrage est enregistré ou supprimé.
+
+**Import CSV** (`/admin/infrastructures/import`, administrateur et gestionnaire) : fichier de 2 Mo maximum (`;` ou `,`, UTF-8 ou Windows-1252), 1 000 lignes au plus. Chaque ligne est validée avec les règles, messages et attributs de `StoreInfrastructureRequest` ; les lignes valides sont créées dans une transaction et un rapport liste les lignes importées et les erreurs par ligne. Option « tout ou rien » : une seule erreur annule tout. Type, état, unité et zone acceptent la valeur ou le libellé (« Réservoir », « À surveiller », « m³ », nom de la zone). Fichier modèle téléchargeable.
+
+**Recherche en langage naturel (IA)** : champ « Rechercher en langage naturel » au-dessus de la liste. Le LLM reçoit la phrase (e-mails et téléphones masqués) et la liste des valeurs autorisées, et renvoie seulement un JSON de filtres (type, état, zone, niveau de risque, inspection en retard, âge minimum, tri) dont le schéma impose les valeurs. Le code le valide (`Infrastructure::normalizeFilters()`, zone existante, âge de 1 à 150 ans) puis l'applique au composant : jamais de SQL généré. Repli : détection de mots-clés (« réservoirs critiques de plus de 40 ans à Ariana en retard »). La phrase interprétée s'affiche en puces de filtres qu'on peut retirer une à une.
+
+**Plan de maintenance par zone (IA)** : bouton « Générer un plan de maintenance » sur la fiche d'une zone (composant Livewire `ZoneMaintenancePlan`). Le code (`MaintenancePlanner`) sélectionne et classe les 5 ouvrages prioritaires : score de risque + retard d'inspection (jusqu'à 30) + 5 par incident ouvert (jusqu'à 25) + 10 si l'état est critique. Le LLM reçoit les rangs et les données techniques (ni code, ni nom d'ouvrage) et rédige un résumé, puis une action et sa justification pour chaque rang ; la réponse est validée (tous les rangs, longueurs), sinon le plan est généré par des règles. Le plan est enregistré sur la zone et exportable en PDF.
+
+**Tests** : `Livewire/InfrastructureMapTest` (5), `InfrastructureStatsTest` (3), `InfrastructureImportTest` (6), `InfrastructureSearchAiTest` (5), `ZoneMaintenancePlanTest` (5).
+
 ## Module Qualité de l'eau
 
 Module 4 « Qualité de l'eau » : analyses physico-chimiques et bactériologiques réalisées sur les infrastructures du réseau.

@@ -12,6 +12,7 @@ use App\Livewire\InfrastructureRisk;
 use App\Models\Infrastructure;
 use App\Models\Zone;
 use App\Services\Infrastructures\InfrastructureAlerts;
+use App\Services\Infrastructures\InfrastructureStatsService;
 use App\Services\Infrastructures\InspectionRecorder;
 use App\Services\Infrastructures\RiskAssessment;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -32,6 +33,14 @@ class InfrastructureController extends Controller
         Gate::authorize('viewAny', Infrastructure::class);
 
         return view('pages.infrastructures.index');
+    }
+
+    /** A8 : statistiques du réseau (Chart.js), calculées par InfrastructureStatsService avec cache. */
+    public function stats(InfrastructureStatsService $stats): View
+    {
+        Gate::authorize('viewAny', Infrastructure::class);
+
+        return view('pages.infrastructures.stats', ['stats' => $stats->all()]);
     }
 
     public function create(Request $request): View

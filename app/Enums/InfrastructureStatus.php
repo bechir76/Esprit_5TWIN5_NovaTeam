@@ -38,6 +38,16 @@ enum InfrastructureStatus: string
         };
     }
 
+    /** Couleur hexadécimale (repères Leaflet et graphiques Chart.js, qui ne lisent pas les variables CSS). */
+    public function hex(): string
+    {
+        return match ($this) {
+            self::Bon => '#2EC4B6',
+            self::ASurveiller => '#F4A261',
+            self::Critique => '#E63946',
+        };
+    }
+
     /** États comptés comme « ouvrages à risque ». */
     public function isAtRisk(): bool
     {

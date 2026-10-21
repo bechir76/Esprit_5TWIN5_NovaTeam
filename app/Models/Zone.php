@@ -39,6 +39,8 @@ class Zone extends Model
      */
     protected $casts = [
         'population_served' => 'integer',
+        'maintenance_plan' => 'array',
+        'maintenance_plan_at' => 'datetime',
     ];
 
     /** @return HasMany<Infrastructure, $this> */

@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\FundingController;
 use App\Http\Controllers\Admin\IncidentController;
 use App\Http\Controllers\Admin\InfrastructureController;
+use App\Http\Controllers\Admin\InfrastructureImportController;
 use App\Http\Controllers\Admin\InterventionController;
 use App\Http\Controllers\Admin\MeasurementController;
 use App\Http\Controllers\Admin\ProjectController as AdminProjectController;
@@ -108,7 +109,15 @@ Route::prefix('admin')->name('admin.')->group(function () use ($stub) {
 
         // Réseau et infrastructures (module 1) : zones de desserte et ouvrages
         // Export CSV (filtres actifs), fiche PDF et inspections : déclarés avant la ressource (InfrastructurePolicy)
+        Route::post('/zones/{zone}/plan-maintenance', [ZoneController::class, 'maintenancePlan'])
+            ->middleware('throttle:'.config('ai.rate_limit').',1')
+            ->name('zones.maintenance-plan');
+        Route::get('/zones/{zone}/plan-maintenance/pdf', [ZoneController::class, 'maintenancePlanPdf'])->name('zones.maintenance-plan.pdf');
         Route::resource('zones', ZoneController::class);
+        Route::get('/infrastructures/statistiques', [InfrastructureController::class, 'stats'])->name('infrastructures.stats');
+        Route::get('/infrastructures/import', [InfrastructureImportController::class, 'create'])->name('infrastructures.import');
+        Route::post('/infrastructures/import', [InfrastructureImportController::class, 'store'])->name('infrastructures.import.store');
+        Route::get('/infrastructures/import/modele', [InfrastructureImportController::class, 'template'])->name('infrastructures.import.template');
         Route::get('/infrastructures/export', [InfrastructureController::class, 'export'])->name('infrastructures.export');
         Route::get('/infrastructures/{infrastructure}/pdf', [InfrastructureController::class, 'pdf'])->name('infrastructures.pdf');
         Route::post('/infrastructures/{infrastructure}/inspections', [InfrastructureController::class, 'inspect'])->name('infrastructures.inspect');

@@ -10,6 +10,29 @@
 @endphp
 
 <div class="card">
+  {{-- B2 : recherche en langage naturel, traduite en filtres autorisés (InfrastructureAiService::parseSearch) --}}
+  <form class="flex flex-col gap-2 border-b border-line p-[14px]" wire:submit="interpret">
+    <label class="text-[.86rem] font-semibold" for="nlSearch">Rechercher en langage naturel</label>
+    <div class="flex flex-wrap gap-2">
+      <input class="input min-w-[240px] flex-1" id="nlSearch" type="search" wire:model="sentence" maxlength="200" placeholder="Ex. : réservoirs de plus de 40 ans à risque élevé avec inspection en retard">
+      <button class="btn btn-navy" type="submit" wire:loading.attr="disabled" wire:target="interpret">
+        <span wire:loading.remove wire:target="interpret">Interpréter</span><span wire:loading wire:target="interpret">Analyse…</span>
+      </button>
+    </div>
+    @error('sentence')<p class="text-[.84rem] text-crit-fg" role="alert">{{ $message }}</p>@enderror
+    @if ($interpreted !== null)
+    <div class="flex flex-wrap items-center gap-1.5 text-[.84rem]" aria-live="polite">
+      <span class="text-muted">« {{ $interpreted }} » →</span>
+      @forelse ($chips as $property => $label)
+      <span class="inline-flex items-center gap-1 rounded-full bg-water-soft px-2.5 py-1 text-info-fg">{{ $label }}<button class="font-bold" type="button" wire:click="removeFilter('{{ $property }}')" aria-label="Retirer le filtre {{ $label }}">×</button></span>
+      @empty
+      <span class="text-muted">aucun filtre reconnu</span>
+      @endforelse
+      <x-status-badge :value="$interpretedBy === 'ia' ? 'interprété par l’IA' : 'mots-clés'" :variant="$interpretedBy === 'ia' ? 'b-info' : 'b-mute'" />
+    </div>
+    @endif
+  </form>
+
   {{-- Sans JavaScript, le formulaire GET recharge la page avec les mêmes paramètres --}}
   <form class="filter-bar" method="GET" action="{{ route('admin.infrastructures.index') }}" x-on:submit.prevent>
     <input class="input min-w-[200px] flex-1" type="search" name="q" wire:model.live.debounce.300ms="q" placeholder="Nom, code ouvrage…" aria-label="Rechercher">
@@ -29,6 +52,12 @@
       <option value="">Tous les états</option>
       @foreach (\App\Enums\InfrastructureStatus::cases() as $case)
       <option value="{{ $case->value }}">{{ $case->label() }}</option>
+      @endforeach
+    </select>
+    <select class="input" name="risk" wire:model.live="risk" aria-label="Niveau de risque">
+      <option value="">Tous les risques</option>
+      @foreach (\App\Enums\RiskLevel::cases() as $case)
+      <option value="{{ $case->value }}">Risque {{ mb_strtolower($case->label()) }}</option>
       @endforeach
     </select>
     <select class="input" name="inspection" wire:model.live="inspection" aria-label="Inspection">

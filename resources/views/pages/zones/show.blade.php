@@ -30,6 +30,9 @@
     <div><span class="caption block">Description</span><p class="mt-1.5 max-w-[70ch]">{{ $zone->description }}</p></div>
     @endif
   </div>
+  {{-- B3 : plan de maintenance (ouvrages classés par le code, texte de l'IA ou des règles) --}}
+  <livewire:zone-maintenance-plan :zone="$zone" />
+
   <div class="card">
     <div class="card-header"><h2>Infrastructures de la zone</h2><a class="btn btn-primary btn-sm" href="{{ route('admin.infrastructures.create', ['zone' => $zone->id]) }}">+ Ajouter</a></div>
     <div class="overflow-x-auto"><table class="data-table"><thead><tr><th>Code</th><th>Nom</th><th>Type</th><th>Capacité</th><th>État</th><th>Dernière inspection</th><th></th></tr></thead><tbody>

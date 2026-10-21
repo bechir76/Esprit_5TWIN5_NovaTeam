@@ -97,14 +97,25 @@ class StoreInfrastructureRequest extends FormRequest
     /** Code en majuscules, virgule décimale acceptée (« 4,5 »), case « visible » décochée = false. */
     protected function prepareForValidation(): void
     {
-        $decimals = collect(['capacity', 'nominal_pressure', 'latitude', 'longitude'])
-            ->filter(fn (string $field) => is_string($this->input($field)))
-            ->mapWithKeys(fn (string $field) => [$field => str_replace([',', ' '], ['.', ''], $this->input($field))]);
+        $this->merge(self::normalizeInput($this->all()));
+    }
 
-        $this->merge($decimals->all() + [
-            'code' => is_string($this->input('code')) ? strtoupper(trim($this->input('code'))) : $this->input('code'),
-            'is_public' => $this->boolean('is_public'),
-        ]);
+    /**
+     * Même préparation pour le formulaire et l'import CSV (InfrastructureImporter).
+     *
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed> champs modifiés
+     */
+    public static function normalizeInput(array $input): array
+    {
+        $decimals = collect(['capacity', 'nominal_pressure', 'latitude', 'longitude'])
+            ->filter(fn (string $field) => is_string($input[$field] ?? null))
+            ->mapWithKeys(fn (string $field) => [$field => str_replace([',', ' '], ['.', ''], $input[$field])]);
+
+        return $decimals->all() + [
+            'code' => is_string($input['code'] ?? null) ? strtoupper(trim($input['code'])) : ($input['code'] ?? null),
+            'is_public' => filter_var($input['is_public'] ?? false, FILTER_VALIDATE_BOOLEAN),
+        ];
     }
 
     protected function uniqueCode(): Unique

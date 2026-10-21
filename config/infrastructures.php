@@ -70,6 +70,15 @@ return [
         'levels' => ['critique' => 70, 'eleve' => 45, 'moyen' => 25],
     ],
 
+    // Statistiques du réseau : durée du cache (secondes), oublié à chaque modification d'un ouvrage
+    'stats_cache_seconds' => 300,
+
+    // Import CSV : nombre maximal de lignes par fichier (fichier de 2 Mo maximum)
+    'import_max_rows' => 1000,
+
+    // Plan de maintenance d'une zone : nombre d'actions proposées
+    'maintenance_plan_size' => 5,
+
     // Texte de l'IA (explication + 3 recommandations)
     'ai' => [
         'enabled' => (bool) env('AI_INFRASTRUCTURES_ENABLED', true),

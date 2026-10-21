@@ -5,10 +5,15 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreZoneRequest;
 use App\Http\Requests\Admin\UpdateZoneRequest;
+use App\Livewire\ZoneMaintenancePlan;
 use App\Models\Zone;
+use App\Services\Infrastructures\MaintenancePlanner;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 /** CRUD des zones de desserte (personnel, ZonePolicy). */
@@ -68,6 +73,29 @@ class ZoneController extends Controller
         $zone->update($request->validated());
 
         return to_route('admin.zones.show', $zone)->with('status', "Zone {$zone->name} mise à jour.");
+    }
+
+    /** B3 : « Générer un plan de maintenance » sans JavaScript (le composant Livewire ZoneMaintenancePlan fait le même calcul). */
+    public function maintenancePlan(Zone $zone, MaintenancePlanner $planner): RedirectResponse
+    {
+        Gate::authorize('planMaintenance', $zone);
+
+        $planner->generate($zone);
+
+        return to_route('admin.zones.show', $zone)->with('status', ZoneMaintenancePlan::generatedMessage($zone));
+    }
+
+    /** B3 : export PDF du dernier plan de maintenance de la zone. */
+    public function maintenancePlanPdf(Zone $zone): Response|RedirectResponse
+    {
+        Gate::authorize('planMaintenance', $zone);
+
+        if (! $zone->maintenance_plan) {
+            return to_route('admin.zones.show', $zone)->with('error', 'Générez d\'abord le plan de maintenance de la zone.');
+        }
+
+        return Pdf::loadView('pages.zones.maintenance-plan-pdf', ['zone' => $zone])
+            ->download('plan-maintenance-'.Str::slug($zone->name).'.pdf');
     }
 
     /** Refusée tant que la zone contient des infrastructures (la clé étrangère est aussi en restrictOnDelete). */

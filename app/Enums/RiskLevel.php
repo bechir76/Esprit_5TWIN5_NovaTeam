@@ -43,6 +43,23 @@ enum RiskLevel: string
         };
     }
 
+    /** Couleur hexadécimale (popups Leaflet, graphiques Chart.js, PDF). */
+    public function hex(): string
+    {
+        return match ($this) {
+            self::Faible => '#2EC4B6',
+            self::Moyen => '#1CA7EC',
+            self::Eleve => '#F4A261',
+            self::Critique => '#E63946',
+        };
+    }
+
+    /** @return array<string, string> valeur => libellé, pour les filtres */
+    public static function options(): array
+    {
+        return collect(self::cases())->mapWithKeys(fn (self $level) => [$level->value => $level->label()])->all();
+    }
+
     /** Couleur de la jauge (jetons CSS du thème). */
     public function color(): string
     {

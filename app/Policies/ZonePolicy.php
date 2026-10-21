@@ -31,6 +31,12 @@ class ZonePolicy
         return $user->isStaff();
     }
 
+    /** Générer le plan de maintenance de la zone (B3) et le télécharger en PDF. */
+    public function planMaintenance(User $user, Zone $zone): bool
+    {
+        return $user->isStaff();
+    }
+
     /** La suppression d'une zone qui contient encore des ouvrages est en plus refusée par ZoneController::destroy(). */
     public function delete(User $user, Zone $zone): bool
     {
