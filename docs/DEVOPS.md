@@ -24,6 +24,21 @@ flowchart LR
     hub -->|deploy hook| render[Render]
     render --> users[Utilisateurs]
 ```
+```mermaid
+flowchart LR
+    subgraph Dev [Développement]
+        A[Code + git push main]
+    end
+    subgraph CI [Intégration continue]
+        B[Tests PHPUnit] --> C[Build image Docker]
+        C --> D[Push Docker Hub]
+    end
+    subgraph CD [Déploiement continu]
+        E[Deploy hook Render] --> F[Site en ligne]
+    end
+    A --> B
+    D --> E
+```
 
 ## Étapes du pipeline
 
