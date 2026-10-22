@@ -17,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
         __DIR__.'/../app/Console/Commands',
     ])
     ->withMiddleware(function (Middleware $middleware) {
+        // Render termine le HTTPS : sans cela, les URL (assets Vite compris) seraient générées en http
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
             'staff' => EnsureUserIsStaff::class,
         ]);

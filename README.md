@@ -1,5 +1,7 @@
 # AquaSecure
 
+[![CI/CD](https://github.com/bechir76/Aquasecure/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/bechir76/Aquasecure/actions/workflows/ci-cd.yml)
+
 Application de gestion des infrastructures d'eau potable.
 
 - **AquaSecure Citoyens** (front) : carte du réseau, qualité de l'eau, signalement d'incidents, projets à financer, espace citoyen.
@@ -50,6 +52,12 @@ php artisan serve
 Puis ouvrir http://127.0.0.1:8000 (site citoyen) ou http://127.0.0.1:8000/admin/login (console de gestion).
 
 `npm run build` compile le CSS Tailwind et le JS dans `public/build` (à relancer après une modification des vues ou de `resources/`, ou utiliser `npm run dev` pendant le développement). `MAIL_MAILER=log` : les e-mails (lien de réinitialisation du mot de passe) sont écrits dans `storage/logs/laravel.log`.
+
+## Déploiement
+
+L'application est empaquetée dans une image Docker (`Dockerfile`, `docker/entrypoint.sh`) et déployée automatiquement : à chaque push sur `main`, GitHub Actions lance les tests, publie l'image sur Docker Hub puis redéploie le service Render. En local avec Docker Desktop : `docker compose up --build`, puis http://localhost:8000.
+
+Pipeline, secrets, variables d'environnement et limites du plan gratuit : voir [docs/DEVOPS.md](docs/DEVOPS.md).
 
 ## Comptes de test
 
