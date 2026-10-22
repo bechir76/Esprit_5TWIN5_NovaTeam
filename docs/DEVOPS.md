@@ -51,12 +51,13 @@ Avec une `APP_KEY` dans le fichier `.env` (sinon `php artisan key:generate`) :
 docker compose up --build
 ```
 
-Puis ouvrir http://localhost:8000 (site citoyen) ou http://localhost:8000/admin/login (comptes de test du README). Sans Compose :
+Puis ouvrir http://localhost:8000 (site citoyen) ou http://localhost:8000/login (comptes de test du README). Sans Compose :
 
 ```bash
 docker build -t aquasecure .
 docker run --rm -p 8000:8080 -e APP_KEY=base64:... aquasecure
 ```
+Site en ligne : https://aquasecure-mb3r.onrender.com
 
 ## Secrets et variables d'environnement
 
